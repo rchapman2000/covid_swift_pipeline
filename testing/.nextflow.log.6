@@ -1,0 +1,117 @@
+Jun-30 14:12:26.460 [main] DEBUG nextflow.cli.Launcher - $> nextflow run ../pipeline.nf --INPUT ./ --OUTDIR kms/ -resume -with-docker 'ubuntu:18.04'
+Jun-30 14:12:26.659 [main] INFO  nextflow.cli.CmdRun - N E X T F L O W  ~  version 20.04.1
+Jun-30 14:12:26.685 [main] INFO  nextflow.cli.CmdRun - Launching `../pipeline.nf` [trusting_stallman] - revision: fb7d707291
+Jun-30 14:12:26.807 [main] DEBUG nextflow.config.ConfigBuilder - Enabling execution in Docker container as requested by cli option `-with-docker ubuntu:18.04`
+Jun-30 14:12:26.905 [main] DEBUG nextflow.Session - Session uuid: 2576ffeb-d01a-40ad-a543-9088876cd271
+Jun-30 14:12:26.905 [main] DEBUG nextflow.Session - Run name: trusting_stallman
+Jun-30 14:12:26.908 [main] DEBUG nextflow.Session - Executor pool size: 24
+Jun-30 14:12:26.980 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 20.04.1 build 5335
+  Created: 03-05-2020 19:37 UTC (12:37 PDT)
+  System: Mac OS X 10.13.6
+  Runtime: Groovy 2.5.8 on Java HotSpot(TM) 64-Bit Server VM 9.0.1+11
+  Encoding: UTF-8 (UTF-8)
+  Process: 56969@UWvirongs-share.local [10.18.239.7]
+  CPUs: 24 - Mem: 32 GB (791 MB) - Swap: 1 GB (1022.2 MB)
+Jun-30 14:12:27.028 [main] DEBUG nextflow.Session - Work-dir: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work [Mac OS X]
+Jun-30 14:12:27.029 [main] DEBUG nextflow.Session - Script base path does not exist or is not a directory: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/bin
+Jun-30 14:12:27.066 [main] DEBUG nextflow.Session - Observer factory: TowerFactory
+Jun-30 14:12:27.070 [main] DEBUG nextflow.Session - Observer factory: DefaultObserverFactory
+Jun-30 14:12:27.405 [main] DEBUG nextflow.Session - Session start invoked
+Jun-30 14:12:28.171 [main] DEBUG nextflow.script.ScriptRunner - > Launching execution
+Jun-30 14:12:28.189 [main] DEBUG nextflow.Session - Workflow process names [dsl1]: Aligning, Trimming
+Jun-30 14:12:28.240 [PathVisitor-1] DEBUG nextflow.file.PathVisitor - files for syntax: glob; folder: ./; pattern: *_R{1,2}*.gz; options: [:]
+Jun-30 14:12:28.488 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Jun-30 14:12:28.489 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Jun-30 14:12:28.498 [main] DEBUG nextflow.executor.Executor - [warm up] executor > local
+Jun-30 14:12:28.508 [main] DEBUG n.processor.LocalPollingMonitor - Creating local task monitor for executor 'local' > cpus=24; memory=32 GB; capacity=24; pollInterval=100ms; dumpInterval=5m
+Jun-30 14:12:28.670 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Jun-30 14:12:28.670 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Jun-30 14:12:28.683 [main] DEBUG nextflow.script.ScriptRunner - > Await termination 
+Jun-30 14:12:28.684 [main] DEBUG nextflow.Session - Session await
+Jun-30 14:12:29.026 [Actor Thread 3] INFO  nextflow.processor.TaskProcessor - [85/820081] Cached process > Trimming (1)
+Jun-30 14:12:29.275 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Jun-30 14:12:29.286 [Task submitter] INFO  nextflow.Session - [33/4c4586] Submitted process > Aligning (1)
+Jun-30 14:12:44.047 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 2; name: Aligning (1); status: COMPLETED; exit: 0; error: -; workDir: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work/33/4c4586f87586b5ccbb314c7b56e3fa]
+Jun-30 14:12:44.048 [Task monitor] DEBUG nextflow.processor.TaskProcessor - Process `Aligning (1)` is unable to find [UnixPath]: `/Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work/33/4c4586f87586b5ccbb314c7b56e3fa/L001.sam` (pattern: `L001.sam`)
+Jun-30 14:12:44.086 [Task monitor] ERROR nextflow.processor.TaskProcessor - Error executing process > 'Aligning (1)'
+
+Caused by:
+  Missing output file(s) `L001.sam` expected by process `Aligning (1)`
+
+Command executed:
+
+  #!/bin/bash
+  
+  # cat NC_045512.2.fasta
+  #/usr/local/bin/bbmap.sh ref=/Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.2.fasta
+  /usr/local/bin/bbmap.sh in1=L001.R1.paired.fastq.gz in2=L001.R2.paired.fastq.gz out=L001.bam ref=NC_045512.2.fasta
+
+Command exit status:
+  0
+
+Command output:
+  (empty)
+
+Command error:
+  Mapping:          	6.148 seconds.
+  Reads/sec:       	58392.35
+  kBases/sec:      	5794.23
+  
+  
+  Pairing data:   	pct pairs	num pairs 	pct bases	   num bases
+  
+  mated pairs:     	  0.0000% 	        0 	  0.0000% 	           0
+  bad pairs:       	  0.0045% 	        8 	  0.0043% 	        1546
+  insert size avg: 	     NaN
+  
+  
+  Read 1 data:      	pct reads	num reads 	pct bases	   num bases
+  
+  mapped:          	  2.8099% 	     5044 	  2.8130% 	      501060
+  unambiguous:     	  2.8099% 	     5044 	  2.8130% 	      501060
+  ambiguous:       	  0.0000% 	        0 	  0.0000% 	           0
+  low-Q discards:  	  0.0000% 	        0 	  0.0000% 	           0
+  
+  perfect best site:	  2.4010% 	     4310 	  2.4037% 	      428150
+  semiperfect site:	  2.4010% 	     4310 	  2.4037% 	      428150
+  rescued:         	  0.0000% 	        0
+  
+  Match Rate:      	      NA 	       NA 	 53.6801% 	      499646
+  Error Rate:      	 14.5519% 	      734 	 46.3199% 	      431138
+  Sub Rate:        	 13.6201% 	      687 	  0.1354% 	        1260
+  Del Rate:        	  1.1102% 	       56 	 46.1680% 	      429724
+  Ins Rate:        	  0.4758% 	       24 	  0.0165% 	         154
+  N Rate:          	  0.0000% 	        0 	  0.0000% 	           0
+  
+  
+  Read 2 data:      	pct reads	num reads 	pct bases	   num bases
+  
+  mapped:          	  0.1677% 	      301 	  0.1671% 	       29757
+  unambiguous:     	  0.1677% 	      301 	  0.1671% 	       29757
+  ambiguous:       	  0.0000% 	        0 	  0.0000% 	           0
+  low-Q discards:  	  0.0000% 	        0 	  0.0000% 	           0
+  
+  perfect best site:	  0.1454% 	      261 	  0.1451% 	       25844
+  semiperfect site:	  0.1454% 	      261 	  0.1451% 	       25844
+  rescued:         	  0.0000% 	        0
+  
+  Match Rate:      	      NA 	       NA 	 34.4456% 	       29690
+  Error Rate:      	 13.2890% 	       40 	 65.5544% 	       56504
+  Sub Rate:        	 12.2924% 	       37 	  0.0708% 	          61
+  Del Rate:        	  1.3289% 	        4 	 65.4767% 	       56437
+  Ins Rate:        	  0.3322% 	        1 	  0.0070% 	           6
+  N Rate:          	  0.0000% 	        0 	  0.0000% 	           0
+  
+  Total time:     	12.622 seconds.
+
+Work dir:
+  /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work/33/4c4586f87586b5ccbb314c7b56e3fa
+
+Tip: view the complete command output by changing to the process work dir and entering the command `cat .command.out`
+Jun-30 14:12:44.093 [main] DEBUG nextflow.Session - Session await > all process finished
+Jun-30 14:12:44.095 [Task monitor] DEBUG nextflow.Session - Session aborted -- Cause: Missing output file(s) `L001.sam` expected by process `Aligning (1)`
+Jun-30 14:12:44.125 [main] DEBUG nextflow.Session - Session await > all barriers passed
+Jun-30 14:12:44.138 [main] DEBUG nextflow.trace.WorkflowStatsObserver - Workflow completed > WorkflowStats[succeededCount=0; failedCount=1; ignoredCount=0; cachedCount=1; pendingCount=0; submittedCount=0; runningCount=0; retriesCount=0; abortedCount=0; succeedDuration=0ms; failedDuration=14.7s; cachedDuration=59.6s;loadCpus=0; loadMemory=0; peakRunning=1; peakCpus=1; peakMemory=0; ]
+Jun-30 14:12:44.331 [main] DEBUG nextflow.CacheDB - Closing CacheDB done
+Jun-30 14:12:44.348 [main] DEBUG nextflow.script.ScriptRunner - > Execution complete -- Goodbye

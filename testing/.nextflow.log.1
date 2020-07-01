@@ -1,0 +1,59 @@
+Jul-01 12:36:11.354 [main] DEBUG nextflow.cli.Launcher - $> nextflow run ../pipeline.nf --INPUT ./ --OUTDIR kms/ -resume -with-docker 'ubuntu:18.04'
+Jul-01 12:36:11.586 [main] INFO  nextflow.cli.CmdRun - N E X T F L O W  ~  version 20.04.1
+Jul-01 12:36:11.661 [main] INFO  nextflow.cli.CmdRun - Launching `../pipeline.nf` [drunk_legentil] - revision: 4eb48a2206
+Jul-01 12:36:11.778 [main] DEBUG nextflow.config.ConfigBuilder - Enabling execution in Docker container as requested by cli option `-with-docker ubuntu:18.04`
+Jul-01 12:36:11.912 [main] DEBUG nextflow.Session - Session uuid: 2576ffeb-d01a-40ad-a543-9088876cd271
+Jul-01 12:36:11.912 [main] DEBUG nextflow.Session - Run name: drunk_legentil
+Jul-01 12:36:11.915 [main] DEBUG nextflow.Session - Executor pool size: 24
+Jul-01 12:36:12.016 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 20.04.1 build 5335
+  Created: 03-05-2020 19:37 UTC (12:37 PDT)
+  System: Mac OS X 10.13.6
+  Runtime: Groovy 2.5.8 on Java HotSpot(TM) 64-Bit Server VM 9.0.1+11
+  Encoding: UTF-8 (UTF-8)
+  Process: 96425@UWvirongs-share.local [140.142.101.138]
+  CPUs: 24 - Mem: 32 GB (24.1 MB) - Swap: 6 GB (734.5 MB)
+Jul-01 12:36:12.100 [main] DEBUG nextflow.Session - Work-dir: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work [Mac OS X]
+Jul-01 12:36:12.101 [main] DEBUG nextflow.Session - Script base path does not exist or is not a directory: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/bin
+Jul-01 12:36:12.151 [main] DEBUG nextflow.Session - Observer factory: TowerFactory
+Jul-01 12:36:12.154 [main] DEBUG nextflow.Session - Observer factory: DefaultObserverFactory
+Jul-01 12:36:12.645 [main] DEBUG nextflow.Session - Session start invoked
+Jul-01 12:36:14.091 [main] DEBUG nextflow.script.ScriptRunner - > Launching execution
+Jul-01 12:36:14.106 [main] DEBUG nextflow.Session - Workflow process names [dsl1]: NameSorting, Aligning, Clipping, Trimming
+Jul-01 12:36:14.198 [PathVisitor-1] DEBUG nextflow.file.PathVisitor - files for syntax: glob; folder: ./; pattern: *_R{1,2}*.gz; options: [:]
+Jul-01 12:36:14.484 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Jul-01 12:36:14.484 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Jul-01 12:36:14.491 [main] DEBUG nextflow.executor.Executor - [warm up] executor > local
+Jul-01 12:36:14.498 [main] DEBUG n.processor.LocalPollingMonitor - Creating local task monitor for executor 'local' > cpus=24; memory=32 GB; capacity=24; pollInterval=100ms; dumpInterval=5m
+Jul-01 12:36:14.726 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Jul-01 12:36:14.726 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Jul-01 12:36:14.737 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Jul-01 12:36:14.737 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Jul-01 12:36:14.754 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Jul-01 12:36:14.754 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Jul-01 12:36:14.765 [main] DEBUG nextflow.script.ScriptRunner - > Await termination 
+Jul-01 12:36:14.765 [main] DEBUG nextflow.Session - Session await
+Jul-01 12:36:15.094 [Actor Thread 3] INFO  nextflow.processor.TaskProcessor - [85/820081] Cached process > Trimming (1)
+Jul-01 12:36:15.147 [Actor Thread 6] INFO  nextflow.processor.TaskProcessor - [d1/abd394] Cached process > Aligning (1)
+Jul-01 12:36:15.177 [Actor Thread 4] INFO  nextflow.processor.TaskProcessor - [0f/59a4a4] Cached process > NameSorting (1)
+Jul-01 12:36:15.300 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Jul-01 12:36:15.307 [Task submitter] INFO  nextflow.Session - [a1/32267a] Submitted process > Clipping (1)
+Jul-01 12:36:36.803 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 4; name: Clipping (1); status: COMPLETED; exit: 127; error: -; workDir: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work/a1/32267a23f37cbae4cd465b0a87b106]
+Jul-01 12:36:36.839 [Task monitor] INFO  nextflow.processor.TaskProcessor - [a1/32267a] NOTE: Process `Clipping (1)` terminated with an error exit status (127) -- Execution is retried (1)
+Jul-01 12:36:36.857 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Jul-01 12:36:36.857 [Task submitter] INFO  nextflow.Session - [3e/7acbbc] Re-submitted process > Clipping (1)
+Jul-01 12:36:58.924 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 5; name: Clipping (1); status: COMPLETED; exit: 127; error: -; workDir: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work/3e/7acbbc4713c86e17ef26596d791bee]
+Jul-01 12:36:58.939 [Task monitor] INFO  nextflow.processor.TaskProcessor - [3e/7acbbc] NOTE: Process `Clipping (1)` terminated with an error exit status (127) -- Execution is retried (2)
+Jul-01 12:36:58.950 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Jul-01 12:36:58.950 [Task submitter] INFO  nextflow.Session - [9f/270fd2] Re-submitted process > Clipping (1)
+Jul-01 12:37:19.410 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 6; name: Clipping (1); status: COMPLETED; exit: 127; error: -; workDir: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work/9f/270fd2ef2e4cc495948e59724afd0a]
+Jul-01 12:37:19.437 [Task monitor] INFO  nextflow.processor.TaskProcessor - [9f/270fd2] NOTE: Process `Clipping (1)` terminated with an error exit status (127) -- Execution is retried (3)
+Jul-01 12:37:19.446 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Jul-01 12:37:19.446 [Task submitter] INFO  nextflow.Session - [f9/851f58] Re-submitted process > Clipping (1)
+Jul-01 12:37:34.755 [SIGINT handler] DEBUG nextflow.Session - Session aborted -- Cause: SIGINT
+Jul-01 12:37:34.914 [main] DEBUG nextflow.Session - Session await > all process finished
+Jul-01 12:37:34.914 [main] DEBUG nextflow.Session - Session await > all barriers passed
+Jul-01 12:37:34.926 [main] WARN  n.processor.TaskPollingMonitor - Killing pending tasks (1)
+Jul-01 12:37:35.021 [main] DEBUG nextflow.trace.WorkflowStatsObserver - Workflow completed > WorkflowStats[succeededCount=0; failedCount=3; ignoredCount=0; cachedCount=3; pendingCount=0; submittedCount=0; runningCount=0; retriesCount=3; abortedCount=1; succeedDuration=0ms; failedDuration=1m 4s; cachedDuration=1m 36s;loadCpus=0; loadMemory=0; peakRunning=1; peakCpus=1; peakMemory=0; ]
+Jul-01 12:37:35.376 [main] DEBUG nextflow.CacheDB - Closing CacheDB done
+Jul-01 12:37:35.538 [main] DEBUG nextflow.script.ScriptRunner - > Execution complete -- Goodbye

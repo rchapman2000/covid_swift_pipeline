@@ -1,0 +1,6 @@
+java -ea -Xmx4478m -Xms4478m -cp /usr/local/opt/bbmap-38.86-0/current/ align2.BBMap build=1 overwrite=true fastareadlen=500 in1=L001.R1.paired.fastq.gz in2=L001.R2.paired.fastq.gz out=L001.bam ref=/Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.fasta
+Exception in thread "main" java.lang.AssertionError: Invalid input file: '/Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.fasta'
+	at align2.AbstractMapper.preparse0(AbstractMapper.java:828)
+	at align2.AbstractMapper.<init>(AbstractMapper.java:53)
+	at align2.BBMap.<init>(BBMap.java:42)
+	at align2.BBMap.main(BBMap.java:30)

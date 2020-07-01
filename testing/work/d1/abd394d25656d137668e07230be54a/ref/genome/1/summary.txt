@@ -1,0 +1,13 @@
+#Summary
+#Generated on	Tue Jun 30 21:18:20 GMT 2020
+#Version	5
+chroms	1
+bases	45903
+defined	29903
+undefined	16000
+contigs	1
+scaffolds	1
+interpad	300
+source	/Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.2.fasta
+bytes	29917
+last modified	1593550057000

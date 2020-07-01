@@ -1,0 +1,67 @@
+Jun-30 14:09:50.924 [main] DEBUG nextflow.cli.Launcher - $> nextflow run ../pipeline.nf --INPUT ./ --OUTDIR kms/ -resume -with-docker 'ubuntu:18.04'
+Jun-30 14:09:51.112 [main] INFO  nextflow.cli.CmdRun - N E X T F L O W  ~  version 20.04.1
+Jun-30 14:09:51.134 [main] INFO  nextflow.cli.CmdRun - Launching `../pipeline.nf` [voluminous_dalembert] - revision: 68facda276
+Jun-30 14:09:51.234 [main] DEBUG nextflow.config.ConfigBuilder - Enabling execution in Docker container as requested by cli option `-with-docker ubuntu:18.04`
+Jun-30 14:09:51.334 [main] DEBUG nextflow.Session - Session uuid: 2576ffeb-d01a-40ad-a543-9088876cd271
+Jun-30 14:09:51.334 [main] DEBUG nextflow.Session - Run name: voluminous_dalembert
+Jun-30 14:09:51.337 [main] DEBUG nextflow.Session - Executor pool size: 24
+Jun-30 14:09:51.408 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 20.04.1 build 5335
+  Created: 03-05-2020 19:37 UTC (12:37 PDT)
+  System: Mac OS X 10.13.6
+  Runtime: Groovy 2.5.8 on Java HotSpot(TM) 64-Bit Server VM 9.0.1+11
+  Encoding: UTF-8 (UTF-8)
+  Process: 56572@UWvirongs-share.local [10.18.239.7]
+  CPUs: 24 - Mem: 32 GB (806.9 MB) - Swap: 1 GB (1022.2 MB)
+Jun-30 14:09:51.530 [main] DEBUG nextflow.Session - Work-dir: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work [Mac OS X]
+Jun-30 14:09:51.531 [main] DEBUG nextflow.Session - Script base path does not exist or is not a directory: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/bin
+Jun-30 14:09:51.566 [main] DEBUG nextflow.Session - Observer factory: TowerFactory
+Jun-30 14:09:51.569 [main] DEBUG nextflow.Session - Observer factory: DefaultObserverFactory
+Jun-30 14:09:51.881 [main] DEBUG nextflow.Session - Session start invoked
+Jun-30 14:09:52.645 [main] DEBUG nextflow.script.ScriptRunner - > Launching execution
+Jun-30 14:09:52.663 [main] DEBUG nextflow.Session - Workflow process names [dsl1]: Aligning, Trimming
+Jun-30 14:09:52.726 [PathVisitor-1] DEBUG nextflow.file.PathVisitor - files for syntax: glob; folder: ./; pattern: *_R{1,2}*.gz; options: [:]
+Jun-30 14:09:52.953 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Jun-30 14:09:52.953 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Jun-30 14:09:52.963 [main] DEBUG nextflow.executor.Executor - [warm up] executor > local
+Jun-30 14:09:52.969 [main] DEBUG n.processor.LocalPollingMonitor - Creating local task monitor for executor 'local' > cpus=24; memory=32 GB; capacity=24; pollInterval=100ms; dumpInterval=5m
+Jun-30 14:09:53.111 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: null
+Jun-30 14:09:53.111 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'local'
+Jun-30 14:09:53.119 [main] DEBUG nextflow.script.ScriptRunner - > Await termination 
+Jun-30 14:09:53.119 [main] DEBUG nextflow.Session - Session await
+Jun-30 14:09:53.407 [Actor Thread 3] INFO  nextflow.processor.TaskProcessor - [85/820081] Cached process > Trimming (1)
+Jun-30 14:09:53.578 [Task submitter] DEBUG nextflow.executor.LocalTaskHandler - Launch cmd line: /bin/bash -ue .command.run
+Jun-30 14:09:53.620 [Task submitter] INFO  nextflow.Session - [b8/014603] Submitted process > Aligning (1)
+Jun-30 14:09:54.546 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 2; name: Aligning (1); status: COMPLETED; exit: 1; error: -; workDir: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work/b8/014603342e92c459926aee7b93c1e1]
+Jun-30 14:09:54.581 [Task monitor] ERROR nextflow.processor.TaskProcessor - Error executing process > 'Aligning (1)'
+
+Caused by:
+  Process `Aligning (1)` terminated with an error exit status (1)
+
+Command executed:
+
+  #!/bin/bash
+  
+  cat /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.2.fasta
+  #/usr/local/bin/bbmap.sh ref=/Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.2.fasta
+  #/usr/local/bin/bbmap.sh in1=L001.R1.paired.fastq.gz in2=L001.R2.paired.fastq.gz out=L001.bam ref=/Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.2.fasta
+
+Command exit status:
+  1
+
+Command output:
+  (empty)
+
+Command error:
+  cat: can't open '/Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.2.fasta': No such file or directory
+
+Work dir:
+  /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/testing/work/b8/014603342e92c459926aee7b93c1e1
+
+Tip: when you have fixed the problem you can continue the execution adding the option `-resume` to the run command line
+Jun-30 14:09:54.586 [main] DEBUG nextflow.Session - Session await > all process finished
+Jun-30 14:09:54.588 [Task monitor] DEBUG nextflow.Session - Session aborted -- Cause: Process `Aligning (1)` terminated with an error exit status (1)
+Jun-30 14:09:54.612 [main] DEBUG nextflow.Session - Session await > all barriers passed
+Jun-30 14:09:54.623 [main] DEBUG nextflow.trace.WorkflowStatsObserver - Workflow completed > WorkflowStats[succeededCount=0; failedCount=1; ignoredCount=0; cachedCount=1; pendingCount=0; submittedCount=0; runningCount=0; retriesCount=0; abortedCount=0; succeedDuration=0ms; failedDuration=818ms; cachedDuration=59.6s;loadCpus=0; loadMemory=0; peakRunning=1; peakCpus=1; peakMemory=0; ]
+Jun-30 14:09:54.814 [main] DEBUG nextflow.CacheDB - Closing CacheDB done
+Jun-30 14:09:54.831 [main] DEBUG nextflow.script.ScriptRunner - > Execution complete -- Goodbye
