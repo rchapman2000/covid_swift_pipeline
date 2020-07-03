@@ -106,6 +106,9 @@ process Aligning {
     output:
       tuple val (base), file("${base}.bam.gz") into Aligned_bam_ch
 
+    cpus 4 
+    memory '6 GB'
+
     script:
     """
     #!/bin/bash
@@ -175,35 +178,40 @@ process generateConsensus {
     maxRetries 3
 
     input:
-      tuple val (base), file(BAMFILE) from Clipped_bam_ch
-      file REFERENCE_FASTA
+        tuple val (base), file(BAMFILE) from Clipped_bam_ch
+        file REFERENCE_FASTA
     output:
-    //  file("${base}.consensus.fasta")
-      file("${base}.clipped.bam")
+        file("${base}.fasta")
+        file("${base}.clipped.bam")
 
     publishDir params.OUTDIR, mode: 'copy'
 
-    script:
-    """
+    shell:
+    '''
     #!/bin/bash
-    # This approach gives a fasta with all N's (work/84/7e5c92/), vcf with lines starting from 20000s
-    #/usr/local/miniconda/bin/samtools mpileup --max-depth 500000 -uf ${REFERENCE_FASTA} ${base}.clipped.bam | \
-    #/usr/local/miniconda/bin/bcftools call -c -o ${base}.consensus.vcf
-    #/usr/local/miniconda/bin/vcfutils.pl vcf2fq ${base}.consensus.vcf > ${base}.consensus.fastq 
-    #/usr/local/miniconda/bin/seqtk seq -aQ64 -q20 -n N ${base}.consensus.fastq > ${base}.consensus.fasta
+    /usr/local/miniconda/bin/samtools mpileup -uf !{REFERENCE_FASTA} !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -c | /usr/local/miniconda/bin/vcfutils.pl vcf2fq > out.fastq
 
-    # This approach gives a fasta identical to ref, blank vcf
-    #/usr/local/miniconda/bin/bcftools mpileup -Ou --max-depth 500000 -f ${REFERENCE_FASTA} ${BAMFILE} | \
-    #/usr/local/miniconda/bin/bcftools call -c -o ${base}.vcf
-    ##/usr/local/miniconda/bin/bcftools call -mv -Oz -o ${base}.vcf.gz
-    #/usr/local/miniconda/bin/bgzip ${base}.vcf
-    #/usr/local/miniconda/bin/bcftools index ${base}.vcf.gz
-    #cat ${REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus ${base}.vcf.gz > ${base}.consensus.fasta
+    /usr/local/miniconda/bin/seqtk seq -aQ64 -q20 -n N out.fastq > !{base}.consensus.fasta
 
-
-
-
-    """
+    cat !{REFERENCE_FASTA} !{base}.consensus.fasta > align_input.fasta
+    /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
+    awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
+    
+    python3 !{baseDir}/trim_ends.py !{base}
+    
+    '''
 }
 
-//201-29740
+    // # This approach gives a fasta with all N's (work/84/7e5c92/), vcf with lines starting from 20000s
+    // #/usr/local/miniconda/bin/samtools mpileup --max-depth 500000 -uf !{REFERENCE_FASTA} !{base}.clipped.bam | \
+    // #/usr/local/miniconda/bin/bcftools call -c -o !{base}.consensus.vcf
+    // #/usr/local/miniconda/bin/vcfutils.pl vcf2fq !{base}.consensus.vcf > !{base}.consensus.fastq 
+    // #/usr/local/miniconda/bin/seqtk seq -aQ64 -q20 -n N !{base}.consensus.fastq > !{base}.consensus.fasta
+
+    // # This approach gives a fasta identical to ref, blank vcf
+    // #/usr/local/miniconda/bin/bcftools mpileup -Ou --max-depth 500000 -f !{REFERENCE_FASTA} !{BAMFILE} | \
+    // #/usr/local/miniconda/bin/bcftools call -c -o !{base}.vcf
+    // ##/usr/local/miniconda/bin/bcftools call -mv -Oz -o !{base}.vcf.gz
+    // #/usr/local/miniconda/bin/bgzip !{base}.vcf
+    // #/usr/local/miniconda/bin/bcftools index !{base}.vcf.gz
+    // #cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus !{base}.vcf.gz > !{base}.consensus.fasta
