@@ -104,13 +104,13 @@ process Aligning {
       tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz") from Trim_out_ch
       file REFERENCE_FASTA
     output:
-      tuple val (base), file("${base}.bam") into Aligned_bam_ch
+      tuple val (base), file("${base}.bam.gz") into Aligned_bam_ch
 
     script:
     """
     #!/bin/bash
 
-    /usr/local/bin/bbmap.sh in1=${base}.R1.paired.fastq.gz in2=${base}.R2.paired.fastq.gz out=${base}.bam ref=${REFERENCE_FASTA}
+    /usr/local/bin/bbmap.sh in1=${base}.R1.paired.fastq.gz in2=${base}.R2.paired.fastq.gz out=${base}.bam.gz ref=${REFERENCE_FASTA}
 
     """
 
@@ -130,14 +130,14 @@ process NameSorting {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.bam") from Aligned_bam_ch
+      tuple val (base), file("${base}.bam.gz") from Aligned_bam_ch
     output:
       tuple val (base), file("${base}.sorted.sam") into Sorted_sam_ch
 
     script:
     """
     #!/bin/bash
-    samtools sort -n -O sam ${base}.bam > ${base}.sorted.sam
+    samtools sort -n -O sam ${base}.bam.gz > ${base}.sorted.sam
 
     """
 }
@@ -159,7 +159,51 @@ process Clipping {
     """
     #!/bin/bash
     /./root/.local/bin/primerclip ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
-    /usr/local/miniconda/bin/samtools view -S -b ${base}.clipped.sam > ${base}.clipped.bam
+    #/usr/local/miniconda/bin/samtools sort -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
+    #/usr/local/miniconda/bin/samtools view -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
+    #/usr/local/miniconda/bin/samtools sort -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
+     /usr/local/miniconda/bin/samtools sort ${base}.clipped.sam -o ${base}.clipped.bam
 
     """
 }
+
+process generateConsensus {
+    container "quay.io/greninger-lab/swift-pipeline"
+
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+      tuple val (base), file(BAMFILE) from Clipped_bam_ch
+      file REFERENCE_FASTA
+    output:
+    //  file("${base}.consensus.fasta")
+      file("${base}.clipped.bam")
+
+    publishDir params.OUTDIR, mode: 'copy'
+
+    script:
+    """
+    #!/bin/bash
+    # This approach gives a fasta with all N's (work/84/7e5c92/), vcf with lines starting from 20000s
+    #/usr/local/miniconda/bin/samtools mpileup --max-depth 500000 -uf ${REFERENCE_FASTA} ${base}.clipped.bam | \
+    #/usr/local/miniconda/bin/bcftools call -c -o ${base}.consensus.vcf
+    #/usr/local/miniconda/bin/vcfutils.pl vcf2fq ${base}.consensus.vcf > ${base}.consensus.fastq 
+    #/usr/local/miniconda/bin/seqtk seq -aQ64 -q20 -n N ${base}.consensus.fastq > ${base}.consensus.fasta
+
+    # This approach gives a fasta identical to ref, blank vcf
+    #/usr/local/miniconda/bin/bcftools mpileup -Ou --max-depth 500000 -f ${REFERENCE_FASTA} ${BAMFILE} | \
+    #/usr/local/miniconda/bin/bcftools call -c -o ${base}.vcf
+    ##/usr/local/miniconda/bin/bcftools call -mv -Oz -o ${base}.vcf.gz
+    #/usr/local/miniconda/bin/bgzip ${base}.vcf
+    #/usr/local/miniconda/bin/bcftools index ${base}.vcf.gz
+    #cat ${REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus ${base}.vcf.gz > ${base}.consensus.fasta
+
+
+
+
+    """
+}
+
+//201-29740

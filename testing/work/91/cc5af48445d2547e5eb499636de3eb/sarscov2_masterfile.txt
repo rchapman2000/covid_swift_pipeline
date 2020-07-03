@@ -1,1 +1,0 @@
-/Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/sarscov2_masterfile.txt
