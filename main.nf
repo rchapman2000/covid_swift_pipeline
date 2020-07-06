@@ -67,6 +67,7 @@ if(params.SINGLE_END == false){
 
 REFERENCE_FASTA = file("${baseDir}/NC_045512.2.fasta")
 MASTERFILE = file("${baseDir}/sarscov2_masterfile.txt")
+ADAPTERS = file("${baseDir}/All_adapters.fa")
 
 
 
@@ -87,7 +88,7 @@ process Trimming {
     #!/bin/bash
 
     trimmomatic PE ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
-    ILLUMINACLIP:\$HOME/downloads/trimmomatic-0.38/adapters/All_adapters.fa:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:30 MINLEN:75
+    ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:30 MINLEN:75
 
     """
 }
