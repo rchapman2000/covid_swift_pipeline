@@ -14,10 +14,10 @@ if __name__ == '__main__':
 	line_num = 0
 	for line in open("repositioned_unwrap.fasta"):
 		# Writes fasta header with real name
-		if(line_num == 0):
+		if(line_num == 2):
 			fasta_header = ">" + args.unwrap_fasta + "\n"
 			new_fasta.write(fasta_header)
-		elif(line_num==1):
+		elif(line_num==3):
 			line_trimmed = line[201:29741]
 			new_fasta.write(line_trimmed)
 		line_num = line_num + 1

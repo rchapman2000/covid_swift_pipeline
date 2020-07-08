@@ -114,11 +114,7 @@ process Aligning {
     """
     #!/bin/bash
 
-<<<<<<< HEAD
     /usr/local/bin/bbmap.sh in1=${base}.R1.paired.fastq.gz in2=${base}.R2.paired.fastq.gz out=${base}.bam.gz ref=${REFERENCE_FASTA}
-=======
-    /usr/local/bin/bbmap.sh in1=${base}.R1.paired.fastq.gz in2=${base}.R2.paired.fastq.gz outm=${base}.bam.gz ref=${REFERENCE_FASTA}
->>>>>>> primerclip carriage return fixed
 
     """
 
@@ -188,21 +184,13 @@ process generateConsensus {
     output:
         file("${base}.fasta")
         file("${base}.clipped.bam")
-<<<<<<< HEAD
-=======
-        //file("*")
->>>>>>> primerclip carriage return fixed
 
     publishDir params.OUTDIR, mode: 'copy'
 
     shell:
     '''
     #!/bin/bash
-<<<<<<< HEAD
     /usr/local/miniconda/bin/samtools mpileup -uf !{REFERENCE_FASTA} !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -c | /usr/local/miniconda/bin/vcfutils.pl vcf2fq > out.fastq
-=======
-    /usr/local/miniconda/bin/samtools mpileup --max-depth 500000 -uf !{REFERENCE_FASTA} !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -c -P 1.1e5 --ploidy 1 | /usr/local/miniconda/bin/vcfutils.pl vcf2fq > out.fastq
->>>>>>> primerclip carriage return fixed
 
     /usr/local/miniconda/bin/seqtk seq -aQ64 -q20 -n N out.fastq > !{base}.consensus.fasta
 
@@ -210,22 +198,8 @@ process generateConsensus {
     /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
-<<<<<<< HEAD
     python3 !{baseDir}/trim_ends.py !{base}
     
-=======
-    
-
-
-    python3 !{baseDir}/trim_ends.py !{base}
-    
-
-
-
-
-   # /usr/local/miniconda/bin/samtools mpileup --max-depth 500000 -gf !{REFERENCE_FASTA} !{BAMFILE} > !{base}.test.bcf
-
->>>>>>> primerclip carriage return fixed
     '''
 }
 
