@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 FROM ubuntu:18.04
+=======
+FROM ubuntu:16.04
+>>>>>>> primerclip carriage return fixed
 
 # install dependencies from pip3
 
@@ -6,6 +10,7 @@ RUN apt update && \
     apt install -y python3 ncbi-blast+ && \
     apt install -y python-biopython \
                    python3-pip \
+<<<<<<< HEAD
                    python3-pysam \
                    wget \
                    unzip && \
@@ -17,6 +22,10 @@ RUN apt update && \
                  numpy \
                  pandas \
                  bokeh
+=======
+                   wget \
+                   unzip
+>>>>>>> primerclip carriage return fixed
 
 # Install dependencies from conda 
 RUN cd /usr/local/ && \
@@ -30,6 +39,7 @@ RUN cd /usr/local/ && \
     conda clean -afy
 # Install Picard 
 
+<<<<<<< HEAD
 RUN wget https://github.com/broadinstitute/picard/releases/download/2.18.15/picard.jar -P /usr/bin/
 # ENV PATH="/picard.jar:${PATH}"
 # ENV picard.jar /picard.jar
@@ -48,6 +58,8 @@ RUN wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/gff3ToGenePred
 RUN chmod +x gff3ToGenePred
 RUN mv gff3ToGenePred /usr/local/bin
 
+=======
+>>>>>>> primerclip carriage return fixed
 # Install PrimerClip 
 RUN wget -qO- https://get.haskellstack.org/ | sh
 #RUN /usr/local/bin/stack build 
@@ -61,9 +73,12 @@ RUN wget https://github.com/swiftbiosciences/primerclip/archive/deltest.zip && u
 # http://www.openbioinformatics.org/annovar/download/0wgxR2rIVP/annovar.latest.tar.gz
 
 
+<<<<<<< HEAD
 # INSTALL
 RUN wget https://github.com/vpeddu/lava/raw/master/docker/annovar.zip && unzip annovar.zip 
 RUN mv annovar/*.pl /usr/local/bin/
+=======
+>>>>>>> primerclip carriage return fixed
 
 
 ##########

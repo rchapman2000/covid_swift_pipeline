@@ -1,3 +1,4 @@
-work/*
-testing/*
-.nextflow.log*
+work/* 
+test_output/* 
+output/* 
+input/* 
