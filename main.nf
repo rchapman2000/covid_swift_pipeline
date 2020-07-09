@@ -114,7 +114,7 @@ process Aligning {
     """
     #!/bin/bash
 
-    /usr/local/bin/bbmap.sh in1=${base}.R1.paired.fastq.gz in2=${base}.R2.paired.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA}
+    /usr/local/bin/bbmap.sh in1=${base}.R1.paired.fastq.gz in2=${base}.R2.paired.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g
 
     """
 
