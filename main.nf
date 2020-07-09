@@ -197,7 +197,7 @@ process generateConsensus {
         --fasta-ref !{REFERENCE_FASTA} \\
         --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
         !{BAMFILE} \\
-        | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller --variants-only \\
+        | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller --variants-only -P 0 \\
         | /usr/local/miniconda/bin/bcftools reheader --samples sample_name.list \\
         | /usr/local/miniconda/bin/bcftools view --output-file !{base}.vcf.gz --output-type z
 
