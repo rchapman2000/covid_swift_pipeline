@@ -206,7 +206,19 @@ process generateConsensus {
 
 
     cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus !{base}.vcf.gz > !{base}.consensus.fa
-    cat !{REFERENCE_FASTA} !{base}.consensus.fa > align_input.fasta
+
+    /usr/local/miniconda/bin/bedtools genomecov \\
+        -bga \\
+        -ibam !{BAMFILE} \\
+        -g !{REFERENCE_FASTA} \\
+        | awk '\$4 < 2' | /usr/local/miniconda/bin/bedtools merge > !{base}.mask.bed
+    
+    /usr/local/miniconda/bin/bedtools maskfasta \\
+        -fi !{base}.consensus.fa \\
+        -bed !{base}.mask.bed \\
+        -fo !{base}.consensus.masked.fa
+
+    cat !{REFERENCE_FASTA} !{base}.consensus.masked.fa > align_input.fasta
     /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
