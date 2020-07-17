@@ -356,7 +356,7 @@ process Clipping_SE {
     """
     #!/bin/bash
     R1=`basename ${SORTED_SAM} ".sorted.sam"`
-    /./root/.local/bin/primerclip ${MASTERFILE} ${SORTED_SAM} \${R1}.clipped.sam
+    /./root/.local/bin/primerclip -s ${MASTERFILE} ${SORTED_SAM} \${R1}.clipped.sam
     #/usr/local/miniconda/bin/samtools sort -n -O sam \${R1}.clipped.sam > \${R1}.clipped.sorted.sam
     #/usr/local/miniconda/bin/samtools view -Sb \${R1}.clipped.sorted.sam > \${R1}.clipped.unsorted.bam
     #/usr/local/miniconda/bin/samtools sort -o \${R1}.clipped.unsorted.bam \${R1}.clipped.bam
@@ -377,7 +377,7 @@ process generateConsensus_SE {
         file REFERENCE_FASTA
     output:
         file("*_swift.fasta")
-        file(BAMFILE)
+        file(BAMFILE))
 
     publishDir params.OUTDIR, mode: 'copy'
 
