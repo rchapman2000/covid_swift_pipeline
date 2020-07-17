@@ -377,7 +377,7 @@ process generateConsensus_SE {
         file REFERENCE_FASTA
     output:
         file("*_swift.fasta")
-        file(BAMFILE))
+        file(BAMFILE)
 
     publishDir params.OUTDIR, mode: 'copy'
 
