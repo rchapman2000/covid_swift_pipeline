@@ -87,7 +87,7 @@ process Trimming {
     """
     #!/bin/bash
 
-    trimmomatic PE ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
+    trimmomatic PE -threads ${task.cpus} ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
     ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:30 MINLEN:75
 
     """
@@ -141,7 +141,7 @@ process NameSorting {
     script:
     """
     #!/bin/bash
-    samtools sort -n -O sam ${base}.bam > ${base}.sorted.sam
+    samtools sort -@ ${task.cpus} -n -O sam ${base}.bam > ${base}.sorted.sam
 
     """
 }
@@ -163,10 +163,10 @@ process Clipping {
     """
     #!/bin/bash
     /./root/.local/bin/primerclip ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
-    #/usr/local/miniconda/bin/samtools sort -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
-    #/usr/local/miniconda/bin/samtools view -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
-    #/usr/local/miniconda/bin/samtools sort -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
-     /usr/local/miniconda/bin/samtools sort ${base}.clipped.sam -o ${base}.clipped.bam
+    #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
+    #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
+    #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
+     /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
 
     """
 }
