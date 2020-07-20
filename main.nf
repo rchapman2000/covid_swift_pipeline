@@ -34,6 +34,7 @@ if (params.help){
 params.INPUT = false
 params.OUTDIR= false
 params.SINGLE_END = false
+TRIM_ENDS=file("${baseDir}/trim_ends.py")
 
 // if INPUT not set
 if (params.INPUT == false) {
@@ -180,6 +181,7 @@ process generateConsensus {
     input:
         tuple val (base), file(BAMFILE) from Clipped_bam_ch
         file REFERENCE_FASTA
+        file TRIM_ENDS
     output:
         file("${base}_swift.fasta")
         file("${base}.clipped.bam")
@@ -221,7 +223,7 @@ process generateConsensus {
     /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
-    python3 !{baseDir}/trim_ends.py !{base}
+    python3 !{TRIM_ENDS} !{base}
 
 
 
@@ -375,6 +377,7 @@ process generateConsensus_SE {
     input:
         file(BAMFILE) from Clipped_bam_ch_SE
         file REFERENCE_FASTA
+        file TRIM_ENDS
     output:
         file("*_swift.fasta")
         file(BAMFILE)
@@ -420,7 +423,7 @@ process generateConsensus_SE {
     /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
-    python3 !{baseDir}/trim_ends.py \${R1}
+    python3 !{TRIM_ENDS} \${R1}
 
 
 

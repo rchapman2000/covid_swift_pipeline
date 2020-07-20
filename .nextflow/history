@@ -3,3 +3,4 @@
 2020-06-30 12:24:02	-	thirsty_lamarr	-	30742d68ade4dc94fae424d6798580a0	e3c3851d-3851-4a2a-b6be-beab1c5ee423	nextflow run pipeline.nf --INPUT ../ribosomal_slippage/ --OUTDIR kms/
 2020-07-09 17:03:49	3.7s	furious_goldwasser	ERR	29ab921920944437c501686da6513b21	5b2f6542-502e-4eb4-8c39-d4c9a07541a4	nextflow run main.nf --INPUT input/subset/ --OUTDIR output/ -with-docker 'ubuntu:18.04'
 2020-07-09 17:03:59	54.3s	agitated_easley	OK	29ab921920944437c501686da6513b21	14def392-c2d9-4d4c-bac3-ddba796d39e8	nextflow run main.nf --INPUT input/subset/ --OUTDIR output/ -with-docker 'ubuntu:18.04' -with-trace
+2020-07-20 11:26:46	58s	pensive_kirch	OK	198d02fe3a0eaa0142ea66fec894b421	16c797ea-dd24-48f2-853b-07e8641686d7	nextflow run main.nf --INPUT input/subset/ --OUTDIR test_out_vikas/
