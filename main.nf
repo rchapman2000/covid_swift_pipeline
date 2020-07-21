@@ -147,7 +147,7 @@ process NameSorting {
 }
 
 process Clipping { 
-    container "quay.io/greninger-lab/swift-pipeline"
+    container "quay.io/greninger-lab/swift-pipeline:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -172,7 +172,7 @@ process Clipping {
 }
 
 process generateConsensus {
-    container "quay.io/greninger-lab/swift-pipeline"
+    container "quay.io/greninger-lab/swift-pipeline:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -342,7 +342,7 @@ process NameSorting_SE {
 }
 
 process Clipping_SE { 
-    container "quay.io/greninger-lab/swift-pipeline"
+    container "quay.io/greninger-lab/swift-pipeline:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -368,7 +368,7 @@ process Clipping_SE {
 }
 
 process generateConsensus_SE {
-    container "quay.io/greninger-lab/swift-pipeline"
+    container "quay.io/greninger-lab/swift-pipeline:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'

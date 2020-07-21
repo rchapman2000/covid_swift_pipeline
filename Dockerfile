@@ -24,7 +24,7 @@ RUN cd /usr/local/ && \
 # Install PrimerClip 
 RUN wget -qO- https://get.haskellstack.org/ | sh
 #RUN /usr/local/bin/stack build 
-RUN wget https://github.com/swiftbiosciences/primerclip/archive/deltest.zip && unzip deltest.zip && cd /primerclip-deltest/ && /usr/local/bin/stack build&&  /usr/local/bin/stack install && cd .. 
+RUN wget https://github.com/michellejlin/covid_swift_pipeline/releases/download/v0.1-alpha/primerclip-deltest.zip && unzip primerclip-deltest.zip && cd /primerclip-deltest/ && /usr/local/bin/stack build&&  /usr/local/bin/stack install && cd .. 
 
 ###########
 # ANNOVAR #
