@@ -1,0 +1,112 @@
+Jul-20 11:26:19.449 [main] DEBUG nextflow.cli.Launcher - $> nextflow run main.nf --INPUT input/subset/ --OUTDIR test_out_vikas/
+Jul-20 11:26:19.626 [main] INFO  nextflow.cli.CmdRun - N E X T F L O W  ~  version 20.04.1
+Jul-20 11:26:19.692 [main] INFO  nextflow.cli.CmdRun - Launching `main.nf` [thirsty_engelbart] - revision: 198d02fe3a
+Jul-20 11:26:19.733 [main] DEBUG nextflow.config.ConfigBuilder - Found config local: /Users/gerbix/Documents/vikas/swift_pipeline/nextflow.config
+Jul-20 11:26:19.734 [main] DEBUG nextflow.config.ConfigBuilder - Parsing config file: /Users/gerbix/Documents/vikas/swift_pipeline/nextflow.config
+Jul-20 11:26:19.848 [main] DEBUG nextflow.config.ConfigBuilder - Applying config profile: `standard`
+Jul-20 11:26:20.101 [main] ERROR nextflow.cli.Launcher - Unable to parse config file: '/Users/gerbix/Documents/vikas/swift_pipeline/nextflow.config'
+
+  Compile failed for sources FixedSetSources[name='/groovy/script/Script472CBBEB2E8B243BDB446A2DE584F496/_nf_config_3225eb2b']. Cause: org.codehaus.groovy.control.MultipleCompilationErrorsException: startup failed:
+  /groovy/script/Script472CBBEB2E8B243BDB446A2DE584F496/_nf_config_3225eb2b: 30: expecting '}', found '' @ line 30, column 1.
+  1 error
+
+ch.grengine.except.CompileException: Compile failed for sources FixedSetSources[name='/groovy/script/Script472CBBEB2E8B243BDB446A2DE584F496/_nf_config_3225eb2b']. Cause: org.codehaus.groovy.control.MultipleCompilationErrorsException: startup failed:
+/groovy/script/Script472CBBEB2E8B243BDB446A2DE584F496/_nf_config_3225eb2b: 30: expecting '}', found '' @ line 30, column 1.
+1 error
+
+	at ch.grengine.code.groovy.DefaultGroovyCompiler.compile(DefaultGroovyCompiler.java:278)
+	at ch.grengine.load.DefaultTopCodeCache.getUpToDateCode(DefaultTopCodeCache.java:79)
+	at ch.grengine.load.LayeredClassLoader.loadMainClass(LayeredClassLoader.java:179)
+	at ch.grengine.engine.LayeredEngine.loadMainClass(LayeredEngine.java:199)
+	at ch.grengine.Grengine.loadMainClass(Grengine.java:692)
+	at ch.grengine.BaseGrengine.load(BaseGrengine.java:538)
+	at ch.grengine.BaseGrengine.load(BaseGrengine.java:420)
+	at ch.grengine.BaseGrengine$load.call(Unknown Source)
+	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCall(CallSiteArray.java:47)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.call(AbstractCallSite.java:115)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.call(AbstractCallSite.java:135)
+	at nextflow.config.ConfigParser.loadScript(ConfigParser.groovy:211)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+	at org.codehaus.groovy.runtime.callsite.PlainObjectMetaMethodSite.doInvoke(PlainObjectMetaMethodSite.java:43)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite$PogoCachedMethodSiteNoUnwrapNoCoerce.invoke(PogoMetaMethodSite.java:190)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite.callCurrent(PogoMetaMethodSite.java:58)
+	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCallCurrent(CallSiteArray.java:51)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:156)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:168)
+	at nextflow.config.ConfigParser.parse(ConfigParser.groovy:292)
+	at nextflow.config.ConfigParser$parse$3.call(Unknown Source)
+	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCall(CallSiteArray.java:47)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.call(AbstractCallSite.java:115)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.call(AbstractCallSite.java:127)
+	at nextflow.config.ConfigBuilder.parse0(ConfigBuilder.groovy:385)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+	at org.codehaus.groovy.runtime.callsite.PlainObjectMetaMethodSite.doInvoke(PlainObjectMetaMethodSite.java:43)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite$PogoCachedMethodSiteNoUnwrapNoCoerce.invoke(PogoMetaMethodSite.java:190)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite.callCurrent(PogoMetaMethodSite.java:58)
+	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCallCurrent(CallSiteArray.java:51)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:156)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:176)
+	at nextflow.config.ConfigBuilder.merge0(ConfigBuilder.groovy:371)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+	at org.codehaus.groovy.runtime.callsite.PlainObjectMetaMethodSite.doInvoke(PlainObjectMetaMethodSite.java:43)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite$PogoCachedMethodSiteNoUnwrapNoCoerce.invoke(PogoMetaMethodSite.java:190)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite.callCurrent(PogoMetaMethodSite.java:58)
+	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCallCurrent(CallSiteArray.java:51)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:156)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:184)
+	at nextflow.config.ConfigBuilder.buildConfig0(ConfigBuilder.groovy:321)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+	at org.codehaus.groovy.runtime.callsite.PlainObjectMetaMethodSite.doInvoke(PlainObjectMetaMethodSite.java:43)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite$PogoCachedMethodSiteNoUnwrapNoCoerce.invoke(PogoMetaMethodSite.java:190)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite.callCurrent(PogoMetaMethodSite.java:58)
+	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCallCurrent(CallSiteArray.java:51)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:156)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:176)
+	at nextflow.config.ConfigBuilder.buildGivenFiles(ConfigBuilder.groovy:287)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:566)
+	at org.codehaus.groovy.runtime.callsite.PlainObjectMetaMethodSite.doInvoke(PlainObjectMetaMethodSite.java:43)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite$PogoCachedMethodSiteNoUnwrapNoCoerce.invoke(PogoMetaMethodSite.java:190)
+	at org.codehaus.groovy.runtime.callsite.PogoMetaMethodSite.callCurrent(PogoMetaMethodSite.java:58)
+	at org.codehaus.groovy.runtime.callsite.CallSiteArray.defaultCallCurrent(CallSiteArray.java:51)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:156)
+	at org.codehaus.groovy.runtime.callsite.AbstractCallSite.callCurrent(AbstractCallSite.java:168)
+	at nextflow.config.ConfigBuilder.buildConfigObject(ConfigBuilder.groovy:659)
+	at nextflow.config.ConfigBuilder.build(ConfigBuilder.groovy:672)
+	at nextflow.script.ScriptRunner.<init>(ScriptRunner.groovy:84)
+	at nextflow.cli.CmdRun.run(CmdRun.groovy:254)
+	at nextflow.cli.Launcher.run(Launcher.groovy:460)
+	at nextflow.cli.Launcher.main(Launcher.groovy:642)
+Caused by: org.codehaus.groovy.control.MultipleCompilationErrorsException: startup failed:
+/groovy/script/Script472CBBEB2E8B243BDB446A2DE584F496/_nf_config_3225eb2b: 30: expecting '}', found '' @ line 30, column 1.
+1 error
+
+	at org.codehaus.groovy.control.ErrorCollector.failIfErrors(ErrorCollector.java:311)
+	at org.codehaus.groovy.control.ErrorCollector.addFatalError(ErrorCollector.java:151)
+	at org.codehaus.groovy.control.ErrorCollector.addError(ErrorCollector.java:121)
+	at org.codehaus.groovy.control.ErrorCollector.addError(ErrorCollector.java:133)
+	at org.codehaus.groovy.control.SourceUnit.addError(SourceUnit.java:325)
+	at org.codehaus.groovy.antlr.AntlrParserPlugin.transformCSTIntoAST(AntlrParserPlugin.java:224)
+	at org.codehaus.groovy.antlr.AntlrParserPlugin.parseCST(AntlrParserPlugin.java:190)
+	at org.codehaus.groovy.control.SourceUnit.parse(SourceUnit.java:226)
+	at org.codehaus.groovy.control.CompilationUnit$1.call(CompilationUnit.java:196)
+	at org.codehaus.groovy.control.CompilationUnit.applyToSourceUnits(CompilationUnit.java:954)
+	at org.codehaus.groovy.control.CompilationUnit.doPhaseOperation(CompilationUnit.java:636)
+	at org.codehaus.groovy.control.CompilationUnit.processPhaseOperations(CompilationUnit.java:612)
+	at org.codehaus.groovy.control.CompilationUnit.compile(CompilationUnit.java:589)
+	at ch.grengine.code.groovy.DefaultGroovyCompiler.compile(DefaultGroovyCompiler.java:241)
+	... 76 common frames omitted

@@ -34,6 +34,7 @@ if (params.help){
 params.INPUT = false
 params.OUTDIR= false
 params.SINGLE_END = false
+TRIM_ENDS=file("${baseDir}/trim_ends.py")
 
 // if INPUT not set
 if (params.INPUT == false) {
@@ -86,7 +87,7 @@ process Trimming {
     """
     #!/bin/bash
 
-    trimmomatic PE ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
+    trimmomatic PE -threads ${task.cpus} ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
     ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:30 MINLEN:75
 
     """
@@ -140,13 +141,13 @@ process NameSorting {
     script:
     """
     #!/bin/bash
-    samtools sort -n -O sam ${base}.bam > ${base}.sorted.sam
+    samtools sort -@ ${task.cpus} -n -O sam ${base}.bam > ${base}.sorted.sam
 
     """
 }
 
 process Clipping { 
-    container "quay.io/greninger-lab/swift-pipeline"
+    container "quay.io/greninger-lab/swift-pipeline:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -162,16 +163,16 @@ process Clipping {
     """
     #!/bin/bash
     /./root/.local/bin/primerclip ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
-    #/usr/local/miniconda/bin/samtools sort -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
-    #/usr/local/miniconda/bin/samtools view -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
-    #/usr/local/miniconda/bin/samtools sort -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
-     /usr/local/miniconda/bin/samtools sort ${base}.clipped.sam -o ${base}.clipped.bam
+    #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
+    #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
+    #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
+     /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
 
     """
 }
 
 process generateConsensus {
-    container "quay.io/greninger-lab/swift-pipeline"
+    container "quay.io/greninger-lab/swift-pipeline:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -180,6 +181,7 @@ process generateConsensus {
     input:
         tuple val (base), file(BAMFILE) from Clipped_bam_ch
         file REFERENCE_FASTA
+        file TRIM_ENDS
     output:
         file("${base}_swift.fasta")
         file("${base}.clipped.bam")
@@ -221,7 +223,7 @@ process generateConsensus {
     /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
-    python3 !{baseDir}/trim_ends.py !{base}
+    python3 !{TRIM_ENDS} !{base}
 
 
 
@@ -340,7 +342,7 @@ process NameSorting_SE {
 }
 
 process Clipping_SE { 
-    container "quay.io/greninger-lab/swift-pipeline"
+    container "quay.io/greninger-lab/swift-pipeline:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -366,7 +368,7 @@ process Clipping_SE {
 }
 
 process generateConsensus_SE {
-    container "quay.io/greninger-lab/swift-pipeline"
+    container "quay.io/greninger-lab/swift-pipeline:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -375,6 +377,7 @@ process generateConsensus_SE {
     input:
         file(BAMFILE) from Clipped_bam_ch_SE
         file REFERENCE_FASTA
+        file TRIM_ENDS
     output:
         file("*_swift.fasta")
         file(BAMFILE)
@@ -420,7 +423,7 @@ process generateConsensus_SE {
     /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
-    python3 !{baseDir}/trim_ends.py \${R1}
+    python3 !{TRIM_ENDS} \${R1}
 
 
 
