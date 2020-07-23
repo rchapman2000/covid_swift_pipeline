@@ -171,64 +171,66 @@ process Clipping {
     """
 }
 
-// process generateConsensus {
-//     container "quay.io/greninger-lab/swift-pipeline:latest"
+process generateConsensus {
+    container "quay.io/greninger-lab/swift-pipeline:latest"
 
-// 	// Retry on fail at most three times 
-//     errorStrategy 'retry'
-//     maxRetries 3
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
 
-//     input:
-//         tuple val (base), file(BAMFILE) from Clipped_bam_ch
-//         file REFERENCE_FASTA
-//         file TRIM_ENDS
-//     output:
-//         file("${base}_swift.fasta")
-//         file("${base}.clipped.bam")
+    input:
+        tuple val (base), file(BAMFILE) from Clipped_bam_ch
+        file REFERENCE_FASTA
+        file TRIM_ENDS
+    output:
+        file("${base}_swift.fasta")
+        file("${base}.clipped.bam")
 
-//     publishDir params.OUTDIR, mode: 'copy'
+    publishDir params.OUTDIR, mode: 'copy'
 
-//     shell:
-//     '''
-//     #!/bin/bash
-//     /usr/local/miniconda/bin/bcftools mpileup \\
-//         --count-orphans \\
-//         --no-BAQ \\
-//         --max-depth 500000 \\
-//         --fasta-ref !{REFERENCE_FASTA} \\
-//         --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-//         !{BAMFILE} \\
-//         | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller --variants-only -P 0 \\
-//         | /usr/local/miniconda/bin/bcftools reheader --samples sample_name.list \\
-//         | /usr/local/miniconda/bin/bcftools view --output-file !{base}.vcf.gz --output-type z
+    shell:
+    '''
+    #!/bin/bash
+    /usr/local/miniconda/bin/bcftools mpileup \\
+        --count-orphans \\
+        --no-BAQ \\
+        --max-depth 500000 \\
+        --max-idepth 500000 \\
+        --fasta-ref !{REFERENCE_FASTA} \\
+        --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
+        --threads 10 \\
+        !{BAMFILE} \\
+        | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller -P 0 \\
+        | /usr/local/miniconda/bin/bcftools reheader --samples sample_name.list \\
+        | /usr/local/miniconda/bin/bcftools view --output-file \${R1}_pre.vcf.gz --output-type z
 
+    /usr/local/miniconda/bin/bcftools norm -f !{REFERENCE_FASTA} -m +any -Oz -o \${R1}.vcf.gz \${R1}_pre.vcf.gz
 
-//     /usr/local/miniconda/bin/tabix -p vcf -f !{base}.vcf.gz
+    /usr/local/miniconda/bin/tabix -p vcf -f \${R1}.vcf.gz
 
+    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus -H1 \${R1}.vcf.gz > \${R1}.consensus.fa
 
-//     cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus !{base}.vcf.gz > !{base}.consensus.fa
-
-//     /usr/local/miniconda/bin/bedtools genomecov \\
-//         -bga \\
-//         -ibam !{BAMFILE} \\
-//         -g !{REFERENCE_FASTA} \\
-//         | awk '\$4 < 2' | /usr/local/miniconda/bin/bedtools merge > !{base}.mask.bed
+    /usr/local/miniconda/bin/bedtools genomecov \\
+        -bga \\
+        -ibam !{BAMFILE} \\
+        -g !{REFERENCE_FASTA} \\
+        | awk '\$4 < 2' | /usr/local/miniconda/bin/bedtools merge > !{base}.mask.bed
     
-//     /usr/local/miniconda/bin/bedtools maskfasta \\
-//         -fi !{base}.consensus.fa \\
-//         -bed !{base}.mask.bed \\
-//         -fo !{base}.consensus.masked.fa
+    /usr/local/miniconda/bin/bedtools maskfasta \\
+        -fi !{base}.consensus.fa \\
+        -bed !{base}.mask.bed \\
+        -fo !{base}.consensus.masked.fa
 
-//     cat !{REFERENCE_FASTA} !{base}.consensus.masked.fa > align_input.fasta
-//     /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
-//     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
+    cat !{REFERENCE_FASTA} !{base}.consensus.masked.fa > align_input.fasta
+    /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
+    awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
-//     python3 !{TRIM_ENDS} !{base}
+    python3 !{TRIM_ENDS} !{base}
 
 
 
-//     '''
-// }
+    '''
+}
 
 
 } else { 
@@ -367,42 +369,6 @@ process Clipping_SE {
     """
 }
 
-// process bamToFastq {
-//     container "quay.io/biocontainers/samtools:1.3--h0592bc0_3"
-
-//     input:
-//         file(BAMFILE) from Clipped_bam_ch_SE
-//     output:
-//         file("preprocessed_reads.fastq") into Preprocessed_fastq_ch
-
-//     script:
-//     """
-//     #!/bin/bash
-//     samtools bam2fq ${BAMFILE} > preprocessed_reads.fastq
-//     """
-
-// }
-
-// process deNovoAssembly {
-//     container "quay.io/biocontainers/spades:3.14.0--h2d02072_0"
-
-// // 	// Retry on fail at most three times 
-// //     errorStrategy 'retry'
-// //     maxRetries 3
-
-//     input: 
-//         file(PREPROCESSED_FASTQ) from Preprocessed_fastq_ch
-
-//     output:
-//         file("scaffolds.fasta") into de_novo_ch
-
-//     script:
-//     """
-//     spades.py -s ${PREPROCESSED_FASTQ} -o ./ --isolate -t 6
-//     """
-// }
- 
-
 process generateConsensus_SE {
     container "quay.io/greninger-lab/swift-pipeline:latest"
 
@@ -468,35 +434,44 @@ process generateConsensus_SE {
 }
 
 
-//  | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller --variants-only -P 0 \\
-//         | /usr/local/miniconda/bin/bcftools view --output-file \${R1}.vcf.gz --output-type z
 
 
-        // --fasta-ref !{REFERENCE_FASTA} \\
 
 
-//  !{BAMFILE} \\
-//         | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller -P 0 \\
-//         | /usr/local/miniconda/bin/bcftools view --output-file \${R1}.vcf.gz --output-type z
 
-//     /usr/local/miniconda/bin/tabix -p vcf -f \${R1}.vcf.gz
+// spades that doesn't work
+// process bamToFastq {
+//     container "quay.io/biocontainers/samtools:1.3--h0592bc0_3"
 
+//     input:
+//         file(BAMFILE) from Clipped_bam_ch_SE
+//     output:
+//         file("preprocessed_reads.fastq") into Preprocessed_fastq_ch
 
-//     cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
+//     script:
+//     """
+//     #!/bin/bash
+//     samtools bam2fq ${BAMFILE} > preprocessed_reads.fastq
+//     """
 
-//     /usr/local/miniconda/bin/bedtools genomecov \\
-//         -bga \\
-//         -ibam !{BAMFILE} \\
-//         -g !{REFERENCE_FASTA} \\
-//         | awk '\$4 < 2' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
-    
-//     /usr/local/miniconda/bin/bedtools maskfasta \\
-//         -fi \${R1}.consensus.fa \\
-//         -bed \${R1}.mask.bed \\
-//         -fo \${R1}.consensus.masked.fa
+// }
 
-//     cat !{REFERENCE_FASTA} \${R1}.consensus.masked.fa > align_input.fasta
-//     /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
-//     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
-    
-//     python3 !{TRIM_ENDS} \${R1}
+// process deNovoAssembly {
+//     container "quay.io/biocontainers/spades:3.14.0--h2d02072_0"
+
+// // 	// Retry on fail at most three times 
+// //     errorStrategy 'retry'
+// //     maxRetries 3
+
+//     input: 
+//         file(PREPROCESSED_FASTQ) from Preprocessed_fastq_ch
+
+//     output:
+//         file("scaffolds.fasta") into de_novo_ch
+
+//     script:
+//     """
+//     spades.py -s ${PREPROCESSED_FASTQ} -o ./ --isolate -t 6
+//     """
+// }
+ 
