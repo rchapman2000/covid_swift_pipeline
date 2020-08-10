@@ -1,6 +1,0 @@
-task_id	hash	native_id	name	status	exit	submit	duration	realtime	%cpu	peak_rss	peak_vmem	rchar	wchar
-1	4b/797d14	1094	Trimming (1)	COMPLETED	0	2020-07-09 17:04:01.113	22.6s	21s	316.2%	482.8 MB	4.7 GB	171.2 MB	3.6 MB
-2	7b/1f3d44	1159	Aligning (1)	COMPLETED	0	2020-07-09 17:04:23.789	14.9s	13s	367.5%	1007.1 MB	9.9 GB	10.8 MB	20.1 MB
-3	82/28bddc	1202	NameSorting (1)	COMPLETED	0	2020-07-09 17:04:38.699	3.4s	1s	32.9%	29.4 MB	55.4 MB	18.7 MB	18.7 MB
-4	a9/548031	1235	Clipping (1)	COMPLETED	0	2020-07-09 17:04:42.111	5.5s	3.8s	55.6%	115.5 MB	1 TB	38.4 MB	23.1 MB
-5	d3/89a9b0	1270	generateConsensus (1)	COMPLETED	0	2020-07-09 17:04:47.722	5.4s	4.6s	85.1%	52.9 MB	140.9 MB	10.1 MB	6.5 MB
