@@ -202,13 +202,13 @@ process generateConsensus {
         !{BAMFILE} \\
         | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller -P 0 \\
         | /usr/local/miniconda/bin/bcftools reheader --samples sample_name.list \\
-        | /usr/local/miniconda/bin/bcftools view --output-file \${R1}_pre.vcf.gz --output-type z
+        | /usr/local/miniconda/bin/bcftools view --output-file !{R1}_pre.vcf.gz --output-type z
 
-    /usr/local/miniconda/bin/bcftools norm -f !{REFERENCE_FASTA} -m +any -Oz -o \${R1}.vcf.gz \${R1}_pre.vcf.gz
+    /usr/local/miniconda/bin/bcftools norm -f !{REFERENCE_FASTA} -m +any -Oz -o !{R1}.vcf.gz !{R1}_pre.vcf.gz
 
-    /usr/local/miniconda/bin/tabix -p vcf -f \${R1}.vcf.gz
+    /usr/local/miniconda/bin/tabix -p vcf -f !{R1}.vcf.gz
 
-    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus -H1 \${R1}.vcf.gz > \${R1}.consensus.fa
+    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus -H1 !{R1}.vcf.gz > !{R1}.consensus.fa
 
     /usr/local/miniconda/bin/bedtools genomecov \\
         -bga \\
@@ -391,7 +391,7 @@ process generateConsensus_SE {
     #!/bin/bash
 
     R1=`basename !{BAMFILE} .clipped.bam`
-    echo \${R1}
+    echo !{R1}
 
     /usr/local/miniconda/bin/bcftools mpileup \\
         --count-orphans \\
@@ -404,30 +404,30 @@ process generateConsensus_SE {
         !{BAMFILE} \\
         | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller -P 0 \\
         | /usr/local/miniconda/bin/bcftools reheader --samples sample_name.list \\
-        | /usr/local/miniconda/bin/bcftools view --output-file \${R1}_pre.vcf.gz --output-type z
+        | /usr/local/miniconda/bin/bcftools view --output-file !{R1}_pre.vcf.gz --output-type z
 
-    /usr/local/miniconda/bin/bcftools norm -f !{REFERENCE_FASTA} -m +any -Oz -o \${R1}.vcf.gz \${R1}_pre.vcf.gz
+    /usr/local/miniconda/bin/bcftools norm -f !{REFERENCE_FASTA} -m +any -Oz -o !{R1}.vcf.gz !{R1}_pre.vcf.gz
 
-    /usr/local/miniconda/bin/tabix -p vcf -f \${R1}.vcf.gz
+    /usr/local/miniconda/bin/tabix -p vcf -f !{R1}.vcf.gz
 
-    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus -H1 \${R1}.vcf.gz > \${R1}.consensus.fa
+    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus -H1 !{R1}.vcf.gz > !{R1}.consensus.fa
 
     /usr/local/miniconda/bin/bedtools genomecov \\
         -bga \\
         -ibam !{BAMFILE} \\
         -g !{REFERENCE_FASTA} \\
-        | awk '\$4 < 2' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
+        | awk '\$4 < 2' | /usr/local/miniconda/bin/bedtools merge > !{R1}.mask.bed
     
     /usr/local/miniconda/bin/bedtools maskfasta \\
-        -fi \${R1}.consensus.fa \\
-        -bed \${R1}.mask.bed \\
-        -fo \${R1}.consensus.masked.fa
+        -fi !{R1}.consensus.fa \\
+        -bed !{R1}.mask.bed \\
+        -fo !{R1}.consensus.masked.fa
 
-    cat !{REFERENCE_FASTA} \${R1}.consensus.masked.fa > align_input.fasta
+    cat !{REFERENCE_FASTA} !{R1}.consensus.masked.fa > align_input.fasta
     /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
-    python3 !{TRIM_ENDS} \${R1}
+    python3 !{TRIM_ENDS} !{R1}
         
     '''
     }
