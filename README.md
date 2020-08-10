@@ -1,4 +1,5 @@
-# SARS-CoV-2 Swift Pipeline
+# TAYLOR (swift) 
+## Trimming Amplicons You LOve Rapidly 
 This pipeline takes gzipped fastq files and outputs .bam files aligned to NC_045512 as well as consensus fastas. Notably this pipeline incorporates [primerclip](https://github.com/swiftbiosciences/primerclip/tree/deltest).
 
 ## Installation
