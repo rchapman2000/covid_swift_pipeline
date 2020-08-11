@@ -195,6 +195,7 @@ process generateConsensus {
     R1=`basename !{BAMFILE} .clipped.bam`
     echo \${R1}
 
+    # Using LAVA consensus calling!
     /usr/local/miniconda/bin/bcftools mpileup \\
         --count-orphans \\
         --no-BAQ \\
@@ -204,16 +205,15 @@ process generateConsensus {
         --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
         --threads 10 \\
         !{BAMFILE} \\
-        | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller -P 0 \\
-        | /usr/local/miniconda/bin/bcftools reheader --samples sample_name.list \\
-        | /usr/local/miniconda/bin/bcftools view --output-file \${R1}_pre.vcf.gz --output-type z
-
-    /usr/local/miniconda/bin/bcftools norm -f !{REFERENCE_FASTA} -m +any -Oz -o \${R1}.vcf.gz \${R1}_pre.vcf.gz
-
-    /usr/local/miniconda/bin/tabix -p vcf -f \${R1}.vcf.gz
-
-    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus -H1 \${R1}.vcf.gz > \${R1}.consensus.fa
-
+        | /usr/local/miniconda/bin/bcftools call -m -Oz -o calls.vcf.gz
+    
+    /usr/local/miniconda/bin/tabix \${R1}_pre.vcf.gz
+    gunzip \${R1}_pre.vcf.gz
+     /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' \${R1}_pre.vcf -o \${R1}.vcf
+    /usr/local/miniconda/bin/bgzip \${R1}.vcf
+    /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
+    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
+    
     /usr/local/miniconda/bin/bedtools genomecov \\
         -bga \\
         -ibam !{BAMFILE} \\
@@ -395,6 +395,7 @@ process generateConsensus_SE {
     R1=`basename !{BAMFILE} .clipped.bam`
     echo \${R1}
 
+    # Using LAVA consensus calling!
     /usr/local/miniconda/bin/bcftools mpileup \\
         --count-orphans \\
         --no-BAQ \\
@@ -404,15 +405,14 @@ process generateConsensus_SE {
         --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
         --threads 10 \\
         !{BAMFILE} \\
-        | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller -P 0 \\
-        | /usr/local/miniconda/bin/bcftools reheader --samples sample_name.list \\
-        | /usr/local/miniconda/bin/bcftools view --output-file \${R1}_pre.vcf.gz --output-type z
-
-    /usr/local/miniconda/bin/bcftools norm -f !{REFERENCE_FASTA} -m +any -Oz -o \${R1}.vcf.gz \${R1}_pre.vcf.gz
-
-    /usr/local/miniconda/bin/tabix -p vcf -f \${R1}.vcf.gz
-
-    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus -H1 \${R1}.vcf.gz > \${R1}.consensus.fa
+        | /usr/local/miniconda/bin/bcftools call -m -Oz -o calls.vcf.gz
+    
+    /usr/local/miniconda/bin/tabix \${R1}_pre.vcf.gz
+    gunzip \${R1}_pre.vcf.gz
+     /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' \${R1}_pre.vcf -o \${R1}.vcf
+    /usr/local/miniconda/bin/bgzip \${R1}.vcf
+    /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
+    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
 
     /usr/local/miniconda/bin/bedtools genomecov \\
         -bga \\
@@ -435,7 +435,25 @@ process generateConsensus_SE {
     }
 }
 
+// previous consensus calling, misses non-clonal variants
+// /usr/local/miniconda/bin/bcftools mpileup \\
+//         --count-orphans \\
+//         --no-BAQ \\
+//         --max-depth 500000 \\
+//         --max-idepth 500000 \\
+//         --fasta-ref !{REFERENCE_FASTA} \\
+//         --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
+//         --threads 10 \\
+//         !{BAMFILE} \\
+//         | /usr/local/miniconda/bin/bcftools call --output-type v --ploidy 1 --keep-alts --keep-masked-ref --multiallelic-caller -P 0 \\
+//         | /usr/local/miniconda/bin/bcftools reheader --samples sample_name.list \\
+//         | /usr/local/miniconda/bin/bcftools view --output-file \${R1}_pre.vcf.gz --output-type z
 
+//     /usr/local/miniconda/bin/bcftools norm -f !{REFERENCE_FASTA} -m +any -Oz -o \${R1}.vcf.gz \${R1}_pre.vcf.gz
+
+//     /usr/local/miniconda/bin/tabix -p vcf -f \${R1}.vcf.gz
+
+//     cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus -H1 \${R1}.vcf.gz > \${R1}.consensus.fa
 
 
 
