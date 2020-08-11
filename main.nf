@@ -205,7 +205,7 @@ process generateConsensus {
         --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
         --threads 10 \\
         !{BAMFILE} \\
-        | /usr/local/miniconda/bin/bcftools call -m -Oz -o calls.vcf.gz
+        | /usr/local/miniconda/bin/bcftools call -m -Oz -o \${R1}_pre.vcf.gz
     
     /usr/local/miniconda/bin/tabix \${R1}_pre.vcf.gz
     gunzip \${R1}_pre.vcf.gz
@@ -213,7 +213,7 @@ process generateConsensus {
     /usr/local/miniconda/bin/bgzip \${R1}.vcf
     /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
     cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
-    
+
     /usr/local/miniconda/bin/bedtools genomecov \\
         -bga \\
         -ibam !{BAMFILE} \\
@@ -405,7 +405,7 @@ process generateConsensus_SE {
         --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
         --threads 10 \\
         !{BAMFILE} \\
-        | /usr/local/miniconda/bin/bcftools call -m -Oz -o calls.vcf.gz
+        | /usr/local/miniconda/bin/bcftools call -m -Oz -o \${R1}_pre.vcf.gz
     
     /usr/local/miniconda/bin/tabix \${R1}_pre.vcf.gz
     gunzip \${R1}_pre.vcf.gz
