@@ -173,6 +173,7 @@ process Clipping {
 
 process generateConsensus {
     container "quay.io/greninger-lab/swift-pipeline:latest"
+    echo true
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -193,7 +194,6 @@ process generateConsensus {
     #!/bin/bash
 
     R1=`basename !{BAMFILE} .clipped.bam`
-    echo \${R1}
 
     # Using LAVA consensus calling!
     /usr/local/miniconda/bin/bcftools mpileup \\
@@ -230,6 +230,8 @@ process generateConsensus {
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
     python3 !{TRIM_ENDS} \${R1}
+
+    [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
 
     '''
 }
@@ -373,6 +375,7 @@ process Clipping_SE {
 
 process generateConsensus_SE {
     container "quay.io/greninger-lab/swift-pipeline:latest"
+    echo true
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -393,7 +396,6 @@ process generateConsensus_SE {
     #!/bin/bash
 
     R1=`basename !{BAMFILE} .clipped.bam`
-    echo \${R1}
 
     # Using LAVA consensus calling!
     /usr/local/miniconda/bin/bcftools mpileup \\
@@ -430,6 +432,8 @@ process generateConsensus_SE {
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
     python3 !{TRIM_ENDS} \${R1}
+
+    [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
         
     '''
     }
