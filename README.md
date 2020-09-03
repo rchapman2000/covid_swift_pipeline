@@ -8,9 +8,6 @@ This pipeline takes gzipped fastq files and outputs .bam files aligned to NC_045
 2. Install [docker](https://docs.docker.com/get-docker/).
 
 ## Usage
-- Example command for fastqs in current directory: ```nextflow run greninger-lab/covid_swift_pipeline --INPUT ./ --OUTDIR output/ -resume -with-trace with-docker ubuntu:16.04```
-
-
 | Command  | Description |
 | ---      | ---         | 
 | --INPUT  | Input folder where gzipped fastqs are located. For current  directory, `./` can be used.
@@ -19,3 +16,6 @@ This pipeline takes gzipped fastq files and outputs .bam files aligned to NC_045
 | -resume  | nextflow will pick up where it left off if the previous command was interrupted for some reason.
 | -with-docker ubuntu:16.04 | Runs command with Ubuntu docker.
 | -with-trace | Outputs a trace.txt that shows which processes end up in which work/ folders. 
+
+Example paired fastqs are provided in the example/ folder. These can be run with the command:
+- Example command for example fastqs: ```nextflow run greninger-lab/covid_swift_pipeline --INPUT example/ --OUTDIR output/ --PAIRED_END -resume -with-trace with-docker ubuntu:16.04```

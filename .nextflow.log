@@ -1,0 +1,93 @@
+Sep-02 17:20:38.935 [main] DEBUG nextflow.cli.Launcher - $> nextflow run main.nf --INPUT example/ --OUTDIR output/ -c /Users/uwvirongs/nextflow.covid.config --PAIRED_END
+Sep-02 17:20:39.225 [main] INFO  nextflow.cli.CmdRun - N E X T F L O W  ~  version 20.04.1
+Sep-02 17:20:39.276 [main] INFO  nextflow.cli.CmdRun - Launching `main.nf` [mighty_heyrovsky] - revision: 9fab99c2a4
+Sep-02 17:20:39.373 [main] DEBUG nextflow.config.ConfigBuilder - Found config local: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/nextflow.config
+Sep-02 17:20:39.378 [main] DEBUG nextflow.config.ConfigBuilder - User config file: /Users/uwvirongs/nextflow.covid.config
+Sep-02 17:20:39.379 [main] DEBUG nextflow.config.ConfigBuilder - Parsing config file: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/nextflow.config
+Sep-02 17:20:39.379 [main] DEBUG nextflow.config.ConfigBuilder - Parsing config file: /Users/uwvirongs/nextflow.covid.config
+Sep-02 17:20:39.432 [main] DEBUG nextflow.config.ConfigBuilder - Applying config profile: `standard`
+Sep-02 17:20:40.321 [main] DEBUG nextflow.config.ConfigBuilder - Applying config profile: `standard`
+Sep-02 17:20:40.582 [main] DEBUG nextflow.Session - Session uuid: 7a2fb927-6116-4bd8-8f98-f090505eef51
+Sep-02 17:20:40.582 [main] DEBUG nextflow.Session - Run name: mighty_heyrovsky
+Sep-02 17:20:40.583 [main] DEBUG nextflow.Session - Executor pool size: 24
+Sep-02 17:20:40.997 [main] DEBUG nextflow.file.FileHelper - Creating a file system instance for provider: S3FileSystemProvider
+Sep-02 17:20:41.024 [main] DEBUG nextflow.Global - Using AWS credential defined in `default` section in file: /Users/uwvirongs/.aws/credentials
+Sep-02 17:20:41.042 [main] DEBUG nextflow.file.FileHelper - AWS S3 config details: {secret_key=vr9D8K.., max_connections=4, region=us-west-2, access_key=AKIAVT..}
+Sep-02 17:20:42.727 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 20.04.1 build 5335
+  Created: 03-05-2020 19:37 UTC (12:37 PDT)
+  System: Mac OS X 10.13.6
+  Runtime: Groovy 2.5.8 on Java HotSpot(TM) 64-Bit Server VM 9.0.1+11
+  Encoding: UTF-8 (UTF-8)
+  Process: 73814@UWvirongs-share.local [140.142.101.138]
+  CPUs: 24 - Mem: 32 GB (20.4 MB) - Swap: 16 GB (1.6 GB)
+Sep-02 17:20:43.336 [main] WARN  com.amazonaws.util.Base64 - JAXB is unavailable. Will fallback to SDK implementation which may be less performant
+Sep-02 17:20:43.352 [main] DEBUG nextflow.Session - Work-dir: s3://covid19-work/ [Mac OS X]
+Sep-02 17:20:43.353 [main] DEBUG nextflow.Session - Script base path does not exist or is not a directory: /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/bin
+Sep-02 17:20:43.540 [main] DEBUG nextflow.Session - Observer factory: TowerFactory
+Sep-02 17:20:43.585 [main] DEBUG nextflow.Session - Observer factory: DefaultObserverFactory
+Sep-02 17:20:43.879 [main] DEBUG nextflow.Session - Session start invoked
+Sep-02 17:20:43.907 [main] DEBUG io.seqera.tower.plugin.TowerClient - Creating Tower observer -- endpoint=https://api.tower.nf; requestInterval=1s; aliveInterval=1m; maxRetries=5; backOffBase=3; backOffDelay=250
+Sep-02 17:20:45.488 [main] DEBUG nextflow.script.ScriptRunner - > Launching execution
+Sep-02 17:20:45.530 [main] DEBUG nextflow.Session - Workflow process names [dsl1]: NameSorting, generateConsensus_SE, Aligning, Aligning_SE, Clipping, Trimming_SE, generateConsensus, Trimming, NameSorting_SE, Clipping_SE
+Sep-02 17:20:45.712 [PathVisitor-1] DEBUG nextflow.file.PathVisitor - files for syntax: glob; folder: example/; pattern: *_R{1,2}*.gz; options: [:]
+Sep-02 17:20:46.035 [main] DEBUG nextflow.script.ProcessConfig - Config settings `withName:Trimming` matches process Trimming
+Sep-02 17:20:46.039 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: awsbatch
+Sep-02 17:20:46.039 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'awsbatch'
+Sep-02 17:20:46.113 [main] DEBUG nextflow.executor.Executor - [warm up] executor > awsbatch
+Sep-02 17:20:46.140 [main] DEBUG nextflow.util.ThrottlingExecutor - Creating throttling executor with opts: nextflow.util.ThrottlingExecutor$Options(poolName:AWSBatch-executor, limiter:RateLimiter[stableRate=50.0qps], poolSize:120, maxPoolSize:120, queueSize:5000, maxRetries:10, keepAlive:1m, autoThrottle:true, errorBurstDelay:1s, rampUpInterval:100, rampUpFactor:1.2, rampUpMaxRate:1.7976931348623157E308, backOffFactor:2.0, backOffMinRate:0.0166666667, retryDelay:1s)
+Sep-02 17:20:46.152 [main] DEBUG nextflow.util.ThrottlingExecutor - Creating throttling executor with opts: nextflow.util.ThrottlingExecutor$Options(poolName:AWSBatch-reaper, limiter:RateLimiter[stableRate=50.0qps], poolSize:120, maxPoolSize:120, queueSize:5000, maxRetries:10, keepAlive:1m, autoThrottle:true, errorBurstDelay:1s, rampUpInterval:100, rampUpFactor:1.2, rampUpMaxRate:1.7976931348623157E308, backOffFactor:2.0, backOffMinRate:0.0166666667, retryDelay:1s)
+Sep-02 17:20:46.153 [main] DEBUG n.cloud.aws.batch.AwsBatchExecutor - Creating parallel monitor for executor 'awsbatch' > pollInterval=10s; dumpInterval=5m
+Sep-02 17:20:46.405 [main] DEBUG nextflow.Global - Using AWS credential defined in `default` section in file: /Users/uwvirongs/.aws/credentials
+Sep-02 17:20:47.374 [main] DEBUG n.cloud.aws.batch.AwsBatchExecutor - [AWS BATCH] Executor options=AwsOptions(cliPath:/home/ec2-user/miniconda/bin/aws, storageClass:null, storageEncryption:null, remoteBinDir:null, region:us-west-2, maxParallelTransfers:16, maxTransferAttempts:1, delayBetweenAttempts:10s, fetchInstanceType:true, jobRole:null, volumes:[], awsCli:/home/ec2-user/miniconda/bin/aws --region us-west-2)
+Sep-02 17:20:47.620 [main] DEBUG nextflow.script.ProcessConfig - Config settings `withName:Aligning` matches process Aligning
+Sep-02 17:20:47.621 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: awsbatch
+Sep-02 17:20:47.621 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'awsbatch'
+Sep-02 17:20:47.649 [main] DEBUG nextflow.script.ProcessConfig - Config settings `withName:NameSorting` matches process NameSorting
+Sep-02 17:20:47.650 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: awsbatch
+Sep-02 17:20:47.650 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'awsbatch'
+Sep-02 17:20:47.662 [main] DEBUG nextflow.script.ProcessConfig - Config settings `withName:Clipping` matches process Clipping
+Sep-02 17:20:47.664 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: awsbatch
+Sep-02 17:20:47.665 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'awsbatch'
+Sep-02 17:20:47.694 [main] DEBUG nextflow.executor.ExecutorFactory - << taskConfig executor: awsbatch
+Sep-02 17:20:47.694 [main] DEBUG nextflow.executor.ExecutorFactory - >> processorType: 'awsbatch'
+Sep-02 17:20:48.029 [Actor Thread 3] DEBUG n.util.BlockingThreadExecutorFactory - Thread pool name=FileTransfer; maxThreads=72; maxQueueSize=216; keepAlive=1m
+Sep-02 17:20:48.063 [main] INFO  io.seqera.tower.plugin.TowerClient - Monitor the execution with Nextflow Tower using this url https://tower.nf/watch/jrlxBOr4
+Sep-02 17:20:48.108 [main] DEBUG nextflow.script.ScriptRunner - > Await termination 
+Sep-02 17:20:48.108 [main] DEBUG nextflow.Session - Session await
+Sep-02 17:20:48.320 [FileTransfer-thread-2] DEBUG nextflow.file.FilePorter - Copying foreign file /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/example/4554_S29_L001_R2_001.fastq.gz to work dir: s3://covid19-work/stage/96/a1ff4332ccbb225e486988ebc66578/4554_S29_L001_R2_001.fastq.gz
+Sep-02 17:20:48.320 [FileTransfer-thread-1] DEBUG nextflow.file.FilePorter - Copying foreign file /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/example/4554_S29_L001_R1_001.fastq.gz to work dir: s3://covid19-work/stage/6d/2315584d2e2cdf24aab6bcab9b2ff2/4554_S29_L001_R1_001.fastq.gz
+Sep-02 17:20:48.484 [FileTransfer-thread-3] DEBUG nextflow.file.FilePorter - Local cache found for foreign file /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/All_adapters.fa at s3://covid19-work/stage/be/f3dde31b934d89b2263844a83d6a76/All_adapters.fa
+Sep-02 17:20:50.197 [AWSBatch-executor-1] DEBUG n.c.aws.batch.AwsBatchTaskHandler - [AWS BATCH] Found job definition name=nf-quay-io-biocontainers-trimmomatic-0-35--6:1; container=quay.io/biocontainers/trimmomatic:0.35--6
+Sep-02 17:20:50.319 [AWSBatch-executor-1] DEBUG n.c.aws.batch.AwsBatchTaskHandler - [AWS BATCH] submitted > job=2b858435-85f3-4001-9b10-ae51d34d87a2; work-dir=s3://covid19-work/de/9474f29ef94a676bf3cac370cde92e
+Sep-02 17:20:50.319 [AWSBatch-executor-1] INFO  nextflow.Session - [de/9474f2] Submitted process > Trimming (1)
+Sep-02 17:25:56.296 [Task monitor] DEBUG n.processor.TaskPollingMonitor - !! executor awsbatch > tasks to be completed: 1 -- submitted tasks are shown below
+~> TaskHandler[id: 1; name: Trimming (1); status: SUBMITTED; exit: -; error: -; workDir: s3://covid19-work/de/9474f29ef94a676bf3cac370cde92e]
+Sep-02 17:30:06.669 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 1; name: Trimming (1); status: COMPLETED; exit: 0; error: -; workDir: s3://covid19-work/de/9474f29ef94a676bf3cac370cde92e]
+Sep-02 17:30:07.425 [FileTransfer-thread-4] DEBUG nextflow.file.FilePorter - Local cache found for foreign file /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.2.fasta at s3://covid19-work/stage/96/b3c477cc3e06ab9c58d66f15dfd789/NC_045512.2.fasta
+Sep-02 17:30:07.991 [AWSBatch-executor-58] DEBUG n.c.aws.batch.AwsBatchTaskHandler - [AWS BATCH] Found job definition name=nf-quay-io-biocontainers-bbmap-38-86--h1296035_0:1; container=quay.io/biocontainers/bbmap:38.86--h1296035_0
+Sep-02 17:30:08.068 [AWSBatch-executor-58] DEBUG n.c.aws.batch.AwsBatchTaskHandler - [AWS BATCH] submitted > job=587f48a6-8c88-4638-b493-205446c0c3bd; work-dir=s3://covid19-work/66/ae78383a70313df7558b3e9fa0432f
+Sep-02 17:30:08.068 [AWSBatch-executor-58] INFO  nextflow.Session - [66/ae7838] Submitted process > Aligning (1)
+Sep-02 17:30:56.443 [Task monitor] DEBUG n.processor.TaskPollingMonitor - !! executor awsbatch > tasks to be completed: 1 -- submitted tasks are shown below
+~> TaskHandler[id: 2; name: Aligning (1); status: RUNNING; exit: -; error: -; workDir: s3://covid19-work/66/ae78383a70313df7558b3e9fa0432f]
+Sep-02 17:30:56.684 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 2; name: Aligning (1); status: COMPLETED; exit: 0; error: -; workDir: s3://covid19-work/66/ae78383a70313df7558b3e9fa0432f]
+Sep-02 17:30:57.404 [AWSBatch-executor-64] DEBUG n.c.aws.batch.AwsBatchTaskHandler - [AWS BATCH] Found job definition name=nf-quay-io-biocontainers-samtools-1-3--h0592bc0_3:1; container=quay.io/biocontainers/samtools:1.3--h0592bc0_3
+Sep-02 17:30:57.490 [AWSBatch-executor-64] DEBUG n.c.aws.batch.AwsBatchTaskHandler - [AWS BATCH] submitted > job=a2a4c2f2-567b-4ae8-b520-ce155c1ecf05; work-dir=s3://covid19-work/9a/afd01f003c1d146deb86e3d4a5c967
+Sep-02 17:30:57.490 [AWSBatch-executor-64] INFO  nextflow.Session - [9a/afd01f] Submitted process > NameSorting (1)
+Sep-02 17:31:16.843 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 3; name: NameSorting (1); status: COMPLETED; exit: 0; error: -; workDir: s3://covid19-work/9a/afd01f003c1d146deb86e3d4a5c967]
+Sep-02 17:31:17.361 [FileTransfer-thread-5] DEBUG nextflow.file.FilePorter - Local cache found for foreign file /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/sarscov2_masterfile.txt at s3://covid19-work/stage/bc/f64f17a4e2f90e27a01b4ff008e16f/sarscov2_masterfile.txt
+Sep-02 17:31:17.806 [AWSBatch-executor-67] DEBUG n.c.aws.batch.AwsBatchTaskHandler - [AWS BATCH] Found job definition name=nf-quay-io-greninger-lab-swift-pipeline-latest:1; container=quay.io/greninger-lab/swift-pipeline:latest
+Sep-02 17:31:17.889 [AWSBatch-executor-67] DEBUG n.c.aws.batch.AwsBatchTaskHandler - [AWS BATCH] submitted > job=f436403e-4862-4f40-b2bd-4f724bb994a4; work-dir=s3://covid19-work/f6/02af8fb40b08a9db239fb49b977608
+Sep-02 17:31:17.890 [AWSBatch-executor-67] INFO  nextflow.Session - [f6/02af8f] Submitted process > Clipping (1)
+Sep-02 17:33:06.702 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 4; name: Clipping (1); status: COMPLETED; exit: 0; error: -; workDir: s3://covid19-work/f6/02af8fb40b08a9db239fb49b977608]
+Sep-02 17:33:07.211 [FileTransfer-thread-7] DEBUG nextflow.file.FilePorter - Local cache found for foreign file /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/trim_ends.py at s3://covid19-work/stage/9b/97d22f5e7163dc5d9729cb5241ba0e/trim_ends.py
+Sep-02 17:33:07.280 [FileTransfer-thread-6] DEBUG nextflow.file.FilePorter - Local cache found for foreign file /Users/uwvirongs/Documents/Michelle/covid_swift_pipeline/NC_045512.2.fasta at s3://covid19-work/stage/96/b3c477cc3e06ab9c58d66f15dfd789/NC_045512.2.fasta
+Sep-02 17:33:07.810 [AWSBatch-executor-79] DEBUG n.c.aws.batch.AwsBatchTaskHandler - [AWS BATCH] submitted > job=d15e6839-23dc-4ffc-b158-410b2256c40b; work-dir=s3://covid19-work/a0/c4f1d8126d9ee95ce40c84f3c02180
+Sep-02 17:33:07.810 [AWSBatch-executor-79] INFO  nextflow.Session - [a0/c4f1d8] Submitted process > generateConsensus (1)
+Sep-02 17:33:26.697 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 5; name: generateConsensus (1); status: COMPLETED; exit: 0; error: -; workDir: s3://covid19-work/a0/c4f1d8126d9ee95ce40c84f3c02180]
+Sep-02 17:33:27.010 [main] DEBUG nextflow.Session - Session await > all process finished
+Sep-02 17:33:27.132 [main] DEBUG nextflow.Session - Session await > all barriers passed
+Sep-02 17:33:27.209 [main] DEBUG nextflow.trace.WorkflowStatsObserver - Workflow completed > WorkflowStats[succeededCount=5; failedCount=0; ignoredCount=0; cachedCount=0; pendingCount=0; submittedCount=0; runningCount=0; retriesCount=0; abortedCount=0; succeedDuration=35.3s; failedDuration=0ms; cachedDuration=0ms;loadCpus=0; loadMemory=0; peakRunning=1; peakCpus=4; peakMemory=8 GB; ]
+Sep-02 17:33:28.315 [main] DEBUG nextflow.CacheDB - Closing CacheDB done
+Sep-02 17:33:28.317 [main] DEBUG nextflow.Session - AWS S3 uploader shutdown
+Sep-02 17:33:28.398 [main] DEBUG nextflow.script.ScriptRunner - > Execution complete -- Goodbye
