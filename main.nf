@@ -3,17 +3,19 @@
 def helpMessage() {
     log.info"""
     Usage: 
-
     An example command for running the pipeline is as follows:
-    nextflow run greninger-lab/covid_swift_pipeline -resume -with-docker ubuntu:18.04 \\
+    nextflow run greninger-lab/covid_swift_pipeline -resume -with-docker ubuntu:18.04 --INPUT example/ --OUTDIR example/output/
+    
+    Parameters:
         --INPUT         Input folder where all fastqs are located.
                         ./ can be used for current directory.
                         Fastqs should all be gzipped. This can be done with the command gzip *.fastq. [REQUIRED]
-        
         --OUTDIR        Output directory. [REQUIRED]
-        
         --SINGLE_END    Optional flag for single end reads. By default, this pipeline does 
                         paired-end reads.
+
+        -with-docker ubuntu:18.04   [REQUIRED]
+        -resume [RECOMMENDED]
         
     """.stripIndent()
 }
@@ -41,7 +43,8 @@ if (params.INPUT == false) {
 }
 // Make sure INPUT ends with trailing slash
 if (!params.INPUT.endsWith("/")){
-   params.INPUT = "${params.INPUT}/"
+    println("Make sure your input directory ends with trailing slash.")
+   exit(1)
 }
 // if OUTDIR not set
 if (params.OUTDIR == false) {
@@ -50,7 +53,8 @@ if (params.OUTDIR == false) {
 }
 // Make sure OUTDIR ends with trailing slash
 if (!params.OUTDIR.endsWith("/")){
-   params.OUTDIR = "${params.OUTDIR}/"
+   println("Make sure your output directory ends with trailing slash.")
+   exit(1)
 }
 
 //files 
