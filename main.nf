@@ -2,12 +2,10 @@
 
 def helpMessage() {
     log.info"""
-    covid pipeline with primerclip :)
-
     Usage: 
 
     An example command for running the pipeline is as follows:
-    nextflow run vpeddu/lava \\
+    nextflow run greninger-lab/covid_swift_pipeline -resume -with-docker ubuntu:18.04 \\
         --INPUT         Input folder where all fastqs are located.
                         ./ can be used for current directory.
                         Fastqs should all be gzipped. This can be done with the command gzip *.fastq. [REQUIRED]
