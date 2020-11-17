@@ -159,7 +159,8 @@ process Clipping {
       tuple val (base), file("${base}.sorted.sam") from Sorted_sam_ch
       file MASTERFILE
     output:
-      tuple val (base), file("${base}.clipped.bam") into Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai") into Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai") into Clipped_bam_ch2
 
     script:
     """
@@ -169,6 +170,30 @@ process Clipping {
     #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
     #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
      /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
+     /usr/local/miniconda/bin/samtools index ${base}.clipped.bam
+
+    """
+}
+
+process lofreq {
+    container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
+
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai") from Clipped_bam_ch2
+      file REFERENCE_FASTA
+    output:
+      file("${base}_lofreq.vcf")
+    
+    publishDir params.OUTDIR, mode: 'copy'
+
+    script:
+    """
+    #!/bin/bash
+    /usr/local/bin/lofreq call -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
 
     """
 }
@@ -182,12 +207,14 @@ process generateConsensus {
     maxRetries 3
 
     input:
-        tuple val (base), file(BAMFILE) from Clipped_bam_ch
+        tuple val (base), file(BAMFILE),file(INDEX_FILE) from Clipped_bam_ch
         file REFERENCE_FASTA
         file TRIM_ENDS
     output:
         file("${base}_swift.fasta")
         file("${base}.clipped.bam")
+        file("${base}_bcftools.vcf")
+        file(INDEX_FILE)
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -232,6 +259,9 @@ process generateConsensus {
     awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
     
     python3 !{TRIM_ENDS} \${R1}
+
+    gunzip \${R1}.vcf.gz
+    mv \${R1}.vcf \${R1}_bcftools.vcf
 
     [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
 
@@ -360,7 +390,8 @@ process Clipping_SE {
       file SORTED_SAM  from Sorted_sam_ch_SE
       file MASTERFILE
     output:
-      file "*.clipped.bam"  into Clipped_bam_ch_SE
+      tuple file("*.clipped.bam"), file("*.bai")  into Clipped_bam_ch_SE
+      file "*."
 
     script:
     """
@@ -371,6 +402,7 @@ process Clipping_SE {
     #/usr/local/miniconda/bin/samtools view -Sb \${R1}.clipped.sorted.sam > \${R1}.clipped.unsorted.bam
     #/usr/local/miniconda/bin/samtools sort -o \${R1}.clipped.unsorted.bam \${R1}.clipped.bam
      /usr/local/miniconda/bin/samtools sort \${R1}.clipped.sam -o \${R1}.clipped.bam
+     /usr/local/miniconda/bin/samtools index \${R1}.clipped.bam
 
     """
 }
@@ -384,12 +416,13 @@ process generateConsensus_SE {
     maxRetries 3
 
     input:
-        file(BAMFILE) from Clipped_bam_ch_SE
+        tuple file(BAMFILE), file("*.bai") from Clipped_bam_ch_SE
         file REFERENCE_FASTA
         file TRIM_ENDS
     output:
         file("*_swift.fasta")
         file(BAMFILE)
+        file("*.bai")
 
     publishDir params.OUTDIR, mode: 'copy'
 
