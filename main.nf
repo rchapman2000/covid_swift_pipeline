@@ -214,6 +214,7 @@ process generateConsensus {
         file("${base}_swift.fasta")
         file("${base}.clipped.bam")
         file("${base}_bcftools.vcf")
+        file("${base}.pileup")
         file(INDEX_FILE)
 
     publishDir params.OUTDIR, mode: 'copy'
@@ -233,8 +234,9 @@ process generateConsensus {
         --fasta-ref !{REFERENCE_FASTA} \\
         --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
         --threads 10 \\
-        !{BAMFILE} \\
-        | /usr/local/miniconda/bin/bcftools call -m -Oz -o \${R1}_pre.vcf.gz
+        !{BAMFILE} > \${R1}.pileup
+    
+    cat \${R1}.pileup | /usr/local/miniconda/bin/bcftools call -m -Oz -o \${R1}_pre.vcf.gz
     
     /usr/local/miniconda/bin/tabix \${R1}_pre.vcf.gz
     gunzip \${R1}_pre.vcf.gz
