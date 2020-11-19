@@ -67,9 +67,6 @@ if(params.SINGLE_END == false){
         .fromFilePairs("${params.INPUT}*_R{1,2}*.gz")
         .ifEmpty { error "Cannot find any FASTQ pairs in ${params.INPUT} ending with .gz" }
         .map { it -> [it[0], it[1][0], it[1][1]]}
-    
-
-
 
 
 process Trimming { 
@@ -83,7 +80,10 @@ process Trimming {
       tuple val(base), file(R1), file(R2) from input_read_ch
       file ADAPTERS
     output: 
-      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz") into Trim_out_ch
+      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") into Trim_out_ch
+      tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") into Trim_out_ch2
+
+    publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy'
 
     script:
     """
@@ -91,6 +91,46 @@ process Trimming {
 
     trimmomatic PE -threads ${task.cpus} ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
     ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:30 MINLEN:75
+
+    num_r1_untrimmed=\$(gunzip -c ${R1} | wc -l)
+    num_r2_untrimmed=\$(gunzip -c ${R2} | wc -l)
+    num_untrimmed=\$((num_r1_untrimmed + num_r2_untrimmed))
+
+    num_r1_paired=\$(gunzip -c ${base}.R1.paired.fastq.gz | wc -l)
+    num_r2_paired=\$(gunzip -c ${base}.R2.paired.fastq.gz | wc -l)
+    num_paired=\$((num_r1_paired + num_r2_paired))
+
+    num_r1_unpaired=\$(gunzip -c ${base}.R1.unpaired.fastq.gz | wc -l)
+    num_r2_unpaired=\$(gunzip -c ${base}.R2.unpaired.fastq.gz | wc -l)
+    num_unpaired=\$((num_r1_unpaired + num_r2_unpaired))
+
+    num_trimmed=\$((num_paired + num_unpaired))
+    
+    echo Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Percent_N > ${base}_summary.csv
+    printf "\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed" >> ${base}_summary.csv
+
+    """
+}
+
+process fastQc {
+    container "quay.io/biocontainers/fastqc:0.11.9--0"
+
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+      tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") from Trim_out_ch2
+    output: 
+      file("*fastqc*") into Fastqc_ch 
+
+    publishDir "${params.OUTDIR}fastqc", mode: 'copy'
+
+    script:
+    """
+    #!/bin/bash
+
+    /usr/local/bin/fastqc ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R2.paired.fastq.gz
 
     """
 }
@@ -104,10 +144,10 @@ process Aligning {
     maxRetries 3
 
     input: 
-      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz") from Trim_out_ch
+      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch
       file REFERENCE_FASTA
     output:
-      tuple val (base), file("${base}.bam") into Aligned_bam_ch
+      tuple val (base), file("${base}.bam"),file("${base}_summary.csv") into Aligned_bam_ch
 
     cpus 4 
     memory '6 GB'
@@ -116,7 +156,10 @@ process Aligning {
     """
     #!/bin/bash
 
-    /usr/local/bin/bbmap.sh in1=${base}.R1.paired.fastq.gz in2=${base}.R2.paired.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g
+    cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
+    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g
+    reads_mapped=\$(cat .command.log | grep "mapped:" | cut -d\$'\\t' -f3)
+    printf ",\$reads_mapped" >> ${base}_summary.csv
 
     """
 
@@ -136,9 +179,9 @@ process NameSorting {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.bam") from Aligned_bam_ch
+      tuple val (base), file("${base}.bam"),file("${base}_summary.csv") from Aligned_bam_ch
     output:
-      tuple val (base), file("${base}.sorted.sam") into Sorted_sam_ch
+      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv") into Sorted_sam_ch
 
     script:
     """
@@ -156,21 +199,26 @@ process Clipping {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.sorted.sam") from Sorted_sam_ch
+      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv") from Sorted_sam_ch
       file MASTERFILE
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai") into Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary.csv") into Clipped_bam_ch
       tuple val (base), file("${base}.clipped.bam"), file("*.bai") into Clipped_bam_ch2
 
     script:
     """
     #!/bin/bash
-    /./root/.local/bin/primerclip ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
+    /./root/.local/bin/primerclip -s ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
     #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
     #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
     #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
      /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
      /usr/local/miniconda/bin/samtools index ${base}.clipped.bam
+
+    clipped_reads=\$(cat .command.log | grep "Total mapped alignments" | cut -d\$'\\t' -f2)
+
+    meancoverage=\$(/usr/local/miniconda/bin/samtools depth -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
+    printf ",\$clipped_reads,\$meancoverage" >> ${base}_summary.csv
 
     """
 }
@@ -207,7 +255,7 @@ process generateConsensus {
     maxRetries 3
 
     input:
-        tuple val (base), file(BAMFILE),file(INDEX_FILE) from Clipped_bam_ch
+        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary.csv") from Clipped_bam_ch
         file REFERENCE_FASTA
         file TRIM_ENDS
     output:
@@ -216,6 +264,7 @@ process generateConsensus {
         file("${base}_bcftools.vcf")
         file("${base}.pileup")
         file(INDEX_FILE)
+        file("${base}_summary.csv")
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -245,25 +294,39 @@ process generateConsensus {
     /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
     cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
 
-    /usr/local/miniconda/bin/bedtools genomecov \\
-        -bga \\
-        -ibam !{BAMFILE} \\
-        -g !{REFERENCE_FASTA} \\
-        | awk '\$4 < 10' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
-    
-    /usr/local/miniconda/bin/bedtools maskfasta \\
+    if [ -s !{BAMFILE} ]
+    then
+        /usr/local/miniconda/bin/bedtools genomecov \\
+            -bga \\
+            -ibam !{BAMFILE} \\
+            -g !{REFERENCE_FASTA} \\
+            | awk '\$4 < 10' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
+        /usr/local/miniconda/bin/bedtools maskfasta \\
         -fi \${R1}.consensus.fa \\
         -bed \${R1}.mask.bed \\
         -fo \${R1}.consensus.masked.fa
 
-    cat !{REFERENCE_FASTA} \${R1}.consensus.masked.fa > align_input.fasta
-    /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
-    awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
-    
-    python3 !{TRIM_ENDS} \${R1}
+        cat !{REFERENCE_FASTA} \${R1}.consensus.masked.fa > align_input.fasta
+        /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
+        awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
+        
+        python3 !{TRIM_ENDS} \${R1}
 
-    gunzip \${R1}.vcf.gz
-    mv \${R1}.vcf \${R1}_bcftools.vcf
+        gunzip \${R1}.vcf.gz
+        mv \${R1}.vcf \${R1}_bcftools.vcf
+    else
+       printf '>\$R1\n' > \${R1}_swift.fasta
+       printf 'n%.0s' {1..29539}
+    fi
+    
+    num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
+    num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
+    percent_n=$(($num_ns/$num_bases*100))
+
+    printf ",\$percent_n" >> \${R1}_summary.csv
+
+    cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
+    mv a.tmp \${R1}_summary.csv
 
     [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
 
