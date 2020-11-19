@@ -90,7 +90,7 @@ process Trimming {
     #!/bin/bash
 
     trimmomatic PE -threads ${task.cpus} ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
-    ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:30 MINLEN:75
+    ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:75
 
     num_r1_untrimmed=\$(gunzip -c ${R1} | wc -l)
     num_r2_untrimmed=\$(gunzip -c ${R2} | wc -l)
