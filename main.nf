@@ -106,8 +106,12 @@ process Trimming {
 
     num_trimmed=\$((num_paired + num_unpaired))
     
-    echo Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Percent_N > ${base}_summary.csv
-    printf "\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed" >> ${base}_summary.csv
+    percent_trimmed=\$((100-\$((100*num_trimmed/num_untrimmed))))
+    
+    echo Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Percent_N > ${base}_summary.csv
+    printf "\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed,\$percent_trimmed" >> ${base}_summary.csv
+    
+    cp .command.log ${base}_trimmosummary.txt
 
     """
 }
