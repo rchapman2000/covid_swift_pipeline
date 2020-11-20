@@ -84,6 +84,7 @@ process Trimming {
       tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") into Trim_out_ch2
 
     publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy'
+    publishDir "${params.OUTDIR}logs", pattern: "*summary.txt", mode: 'copy'
 
     script:
     """
@@ -108,10 +109,10 @@ process Trimming {
     
     percent_trimmed=\$((100-\$((100*num_trimmed/num_untrimmed))))
     
-    echo Sample_Name,Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Percent_N > ${base}_summary.csv
+    echo Sample_Name,Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Percent_N > ${base}_summary.csv
     printf "${base},\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed,\$percent_trimmed" >> ${base}_summary.csv
     
-    cp .command.log ${base}_trimmosummary.txt
+    cp .command.log ${base}_trim_summary.txt
 
     """
 }
@@ -153,6 +154,8 @@ process Aligning {
     output:
       tuple val (base), file("${base}.bam"),file("${base}_summary.csv") into Aligned_bam_ch
 
+    publishDir "${params.OUTDIR}logs", pattern: "*summary.txt", mode: 'copy'
+
     cpus 4 
     memory '6 GB'
 
@@ -164,6 +167,8 @@ process Aligning {
     /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g
     reads_mapped=\$(cat .command.log | grep "mapped:" | cut -d\$'\\t' -f3)
     printf ",\$reads_mapped" >> ${base}_summary.csv
+
+    cp .command.log ${base}_aligning_summary.txt
 
     """
 
@@ -209,6 +214,8 @@ process Clipping {
       tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary.csv") into Clipped_bam_ch
       tuple val (base), file("${base}.clipped.bam"), file("*.bai") into Clipped_bam_ch2
 
+    publishDir "${params.OUTDIR}logs", pattern: "*summary.txt", mode: 'copy'
+
     script:
     """
     #!/bin/bash
@@ -223,6 +230,8 @@ process Clipping {
 
     meancoverage=\$(/usr/local/miniconda/bin/samtools depth -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
     printf ",\$clipped_reads,\$meancoverage" >> ${base}_summary.csv
+
+    cp .command.log ${base}_clipping_summary.txt
 
     """
 }
@@ -271,6 +280,7 @@ process generateConsensus {
         file("${base}_summary.csv")
 
     publishDir params.OUTDIR, mode: 'copy'
+    publishDir "${params.OUTDIR}logs", pattern: "*summary.txt", mode: 'copy'
 
     shell:
     '''
@@ -327,12 +337,25 @@ process generateConsensus {
     num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
     num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
     percent_n=$(($num_ns/$num_bases*100))
-    printf ",\$percent_n" >> \${R1}_summary.csv
+
+    # Spike protein coverage
+    /usr/local/miniconda/bin/samtools depth -a -r NC_045512.2:21563-25384 !{BAMFILE} > \${R1}_spike_coverage.txt
+    avgcoverage=$(cat \${R1}_spike_coverage.txt | awk '{sum+=$3} END { print sum/NR}')
+    proteinlength=$((25384-21563+1))
+    cov100=$((100*$(cat \${R1}_spike_coverage.txt | awk '$3>=100' | wc -l)/3822))
+    cov200=$((100*$(cat \${R1}_spike_coverage.txt | awk '$3>=200' | wc -l)/3822))
+
+    printf ",\$avgcoverage,\$cov100,\$cov200,\$percent_n" >> \${R1}_summary.csv
 
     cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
     mv a.tmp \${R1}_summary.csv
 
+    python3 fix_coverage.py \${R1}
+    mv \${R1}_summary_fixed.csv \${R1}_summary.csv
+
     [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
+
+    cp .command.log \${R1}_consensus_summary.txt
 
     '''
 }
