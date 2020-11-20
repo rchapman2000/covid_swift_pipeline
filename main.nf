@@ -61,6 +61,8 @@ if (!params.OUTDIR.endsWith("/")){
 REFERENCE_FASTA = file("${baseDir}/NC_045512.2.fasta")
 MASTERFILE = file("${baseDir}/sarscov2_masterfile.txt")
 ADAPTERS = file("${baseDir}/All_adapters.fa")
+FIX_COVERAGE = file("${baseDir}/fix_coverage.py")
+PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
 
 if(params.SINGLE_END == false){ 
     input_read_ch = Channel
@@ -80,11 +82,10 @@ process Trimming {
       tuple val(base), file(R1), file(R2) from input_read_ch
       file ADAPTERS
     output: 
-      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") into Trim_out_ch
+      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv"),file("${base}_log.txt") into Trim_out_ch
       tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") into Trim_out_ch2
 
     publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy'
-    publishDir "${params.OUTDIR}logs", pattern: "*summary.txt", mode: 'copy'
 
     script:
     """
@@ -112,7 +113,7 @@ process Trimming {
     echo Sample_Name,Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Percent_N > ${base}_summary.csv
     printf "${base},\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed,\$percent_trimmed" >> ${base}_summary.csv
     
-    cp .command.log ${base}_trim_summary.txt
+    cp .command.log ${base}_log.txt
 
     """
 }
@@ -149,12 +150,10 @@ process Aligning {
     maxRetries 3
 
     input: 
-      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch
+      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv"),file("${base}_log.txt") from Trim_out_ch
       file REFERENCE_FASTA
     output:
-      tuple val (base), file("${base}.bam"),file("${base}_summary.csv") into Aligned_bam_ch
-
-    publishDir "${params.OUTDIR}logs", pattern: "*summary.txt", mode: 'copy'
+      tuple val (base), file("${base}.bam"),file("${base}_summary.csv"),file("${base}_log.txt") into Aligned_bam_ch
 
     cpus 4 
     memory '6 GB'
@@ -168,7 +167,7 @@ process Aligning {
     reads_mapped=\$(cat .command.log | grep "mapped:" | cut -d\$'\\t' -f3)
     printf ",\$reads_mapped" >> ${base}_summary.csv
 
-    cp .command.log ${base}_aligning_summary.txt
+    cat .command.log >> ${base}_log.txt
 
     """
 
@@ -188,14 +187,16 @@ process NameSorting {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.bam"),file("${base}_summary.csv") from Aligned_bam_ch
+      tuple val (base), file("${base}.bam"),file("${base}_summary.csv"),file("${base}_log.txt") from Aligned_bam_ch
     output:
-      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv") into Sorted_sam_ch
+      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv"),file("${base}_log.txt") into Sorted_sam_ch
 
     script:
     """
     #!/bin/bash
     samtools sort -@ ${task.cpus} -n -O sam ${base}.bam > ${base}.sorted.sam
+
+    cat .command.log >> ${base}_log.txt
 
     """
 }
@@ -208,13 +209,11 @@ process Clipping {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv") from Sorted_sam_ch
+      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv"),file("${base}_log.txt") from Sorted_sam_ch
       file MASTERFILE
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary.csv") into Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary.csv"),file("${base}_log.txt") into Clipped_bam_ch
       tuple val (base), file("${base}.clipped.bam"), file("*.bai") into Clipped_bam_ch2
-
-    publishDir "${params.OUTDIR}logs", pattern: "*summary.txt", mode: 'copy'
 
     script:
     """
@@ -231,7 +230,7 @@ process Clipping {
     meancoverage=\$(/usr/local/miniconda/bin/samtools depth -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
     printf ",\$clipped_reads,\$meancoverage" >> ${base}_summary.csv
 
-    cp .command.log ${base}_clipping_summary.txt
+    cat .command.log >> ${base}_log.txt
 
     """
 }
@@ -268,9 +267,10 @@ process generateConsensus {
     maxRetries 3
 
     input:
-        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary.csv") from Clipped_bam_ch
+        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary.csv"),file("${base}_log.txt") from Clipped_bam_ch
         file REFERENCE_FASTA
         file TRIM_ENDS
+        file FIX_COVERAGE
     output:
         file("${base}_swift.fasta")
         file("${base}.clipped.bam")
@@ -280,11 +280,11 @@ process generateConsensus {
         file("${base}_summary.csv")
 
     publishDir params.OUTDIR, mode: 'copy'
-    publishDir "${params.OUTDIR}logs", pattern: "*summary.txt", mode: 'copy'
 
     shell:
     '''
     #!/bin/bash
+    ls -latr
 
     R1=`basename !{BAMFILE} .clipped.bam`
 
@@ -350,12 +350,12 @@ process generateConsensus {
     cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
     mv a.tmp \${R1}_summary.csv
 
-    python3 fix_coverage.py \${R1}
+    python3 !{FIX_COVERAGE} \${R1}
     mv \${R1}_summary_fixed.csv \${R1}_summary.csv
 
     [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
 
-    cp .command.log \${R1}_consensus_summary.txt
+    cat .command.log >> \${R1}_log.txt
 
     '''
 }

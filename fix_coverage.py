@@ -30,6 +30,6 @@ if __name__ == '__main__':
 			new_sample_data = sample_data
 			new_sample_data[-1] = n_percent
 
-		new_sample_line = ','.join(map(str,new_sample_data))
-		summary_csv_fixed.write(new_sample_line)
+			new_sample_line = ','.join(map(str,new_sample_data))
+			summary_csv_fixed.write(new_sample_line)
 		line_num+=1
