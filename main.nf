@@ -94,22 +94,22 @@ process Trimming {
 
     num_r1_untrimmed=\$(gunzip -c ${R1} | wc -l)
     num_r2_untrimmed=\$(gunzip -c ${R2} | wc -l)
-    num_untrimmed=\$((num_r1_untrimmed + num_r2_untrimmed))
+    num_untrimmed=\$((\$((num_r1_untrimmed + num_r2_untrimmed))/4))
 
     num_r1_paired=\$(gunzip -c ${base}.R1.paired.fastq.gz | wc -l)
     num_r2_paired=\$(gunzip -c ${base}.R2.paired.fastq.gz | wc -l)
-    num_paired=\$((num_r1_paired + num_r2_paired))
+    num_paired=\$((\$((num_r1_paired + num_r2_paired))/4))
 
     num_r1_unpaired=\$(gunzip -c ${base}.R1.unpaired.fastq.gz | wc -l)
     num_r2_unpaired=\$(gunzip -c ${base}.R2.unpaired.fastq.gz | wc -l)
-    num_unpaired=\$((num_r1_unpaired + num_r2_unpaired))
+    num_unpaired=\$((\$((num_r1_unpaired + num_r2_unpaired))/4))
 
     num_trimmed=\$((num_paired + num_unpaired))
     
     percent_trimmed=\$((100-\$((100*num_trimmed/num_untrimmed))))
     
-    echo Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Percent_N > ${base}_summary.csv
-    printf "\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed,\$percent_trimmed" >> ${base}_summary.csv
+    echo Sample_Name,Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Percent_N > ${base}_summary.csv
+    printf "${base},\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed,\$percent_trimmed" >> ${base}_summary.csv
     
     cp .command.log ${base}_trimmosummary.txt
 
@@ -323,10 +323,10 @@ process generateConsensus {
        printf 'n%.0s' {1..29539}
     fi
     
+    # Find percent ns, doesn't work, fix later in python script
     num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
     num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
     percent_n=$(($num_ns/$num_bases*100))
-
     printf ",\$percent_n" >> \${R1}_summary.csv
 
     cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
