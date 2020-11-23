@@ -260,7 +260,6 @@ process lofreq {
 
 process generateConsensus {
     container "quay.io/greninger-lab/swift-pipeline:latest"
-    echo true
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
