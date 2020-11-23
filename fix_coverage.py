@@ -19,7 +19,7 @@ if __name__ == '__main__':
 			counter = sequence.lower().count('n')
 			length = len(sequence)
 			n_percent = (counter/length*100)
-			line_num +=1
+		line_num +=1
 
 	line_num = 0
 	for line in open(summmary_csv):
