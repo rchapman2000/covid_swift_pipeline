@@ -3,4 +3,6 @@ test_output/*
 output/* 
 input/* 
 test_output_old/*
-.nextflow.log.*
+.nextflow.log*
+.nextflow/*
+.DS_Store
