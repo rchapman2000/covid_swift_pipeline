@@ -13,6 +13,7 @@ def helpMessage() {
         --OUTDIR        Output directory. [REQUIRED]
         --SINGLE_END    Optional flag for single end reads. By default, this pipeline does 
                         paired-end reads.
+        --PRIMERS       Primer masterfile to run. By default, this pipeline uses the original Swift V1 primers. --PRIMERS V2 can be specified for the Swift V2 primer set.
 
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
@@ -34,6 +35,7 @@ if (params.help){
 params.INPUT = false
 params.OUTDIR= false
 params.SINGLE_END = false
+params.PRIMERS = false
 TRIM_ENDS=file("${baseDir}/trim_ends.py")
 
 // if INPUT not set
@@ -59,7 +61,14 @@ if (!params.OUTDIR.endsWith("/")){
 
 //files 
 REFERENCE_FASTA = file("${baseDir}/NC_045512.2.fasta")
-MASTERFILE = file("${baseDir}/sarscov2_masterfile.txt")
+if (params.PRIMERS == "V2" | params.PRIMERS == "v2") {
+    MASTERFILE = file("${baseDir}/sarscov2_v2_masterfile.txt")
+    println("Using Swift V2 primerset...")
+}
+else {
+    MASTERFILE = file("${baseDir}/sarscov2_masterfile.txt")
+    println("Using Swift V1 primerset [default]...")
+}
 ADAPTERS = file("${baseDir}/All_adapters.fa")
 FIX_COVERAGE = file("${baseDir}/fix_coverage.py")
 PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
@@ -322,7 +331,7 @@ process Clipping {
     if(params.SINGLE_END == false) { 
         """
         #!/bin/bash
-        /./root/.local/bin/primerclip ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
+        /./root/.local/bin/primerclip -s ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
         #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
         #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
         #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
@@ -434,7 +443,12 @@ process generateConsensus {
     /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
     cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
 
-    if [ -s !{BAMFILE} ]
+    bamsize=$(($(wc -c !{BAMFILE} | awk '{print $1'})+0))
+    echo $bamsize
+
+    #if [ -s !{BAMFILE} ]
+    # More reliable way of checking bam size, because of aliases
+    if (( $bamsize > 92 ))
     then
         /usr/local/miniconda/bin/bedtools genomecov \\
             -bga \\
@@ -452,32 +466,41 @@ process generateConsensus {
         
         python3 !{TRIM_ENDS} \${R1}
 
-        gunzip \${R1}.vcf.gz
-        mv \${R1}.vcf \${R1}_bcftools.vcf
+        # Find percent ns, doesn't work, fix later in python script
+        num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
+        num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
+        percent_n=$(($num_ns/$num_bases*100))
+
+        # Spike protein coverage
+        /usr/local/miniconda/bin/samtools depth -a -r NC_045512.2:21563-25384 !{BAMFILE} > \${R1}_spike_coverage.txt
+        avgcoverage=$(cat \${R1}_spike_coverage.txt | awk '{sum+=$3} END { print sum/NR}')
+        proteinlength=$((25384-21563+1))
+        cov100=$((100*$(cat \${R1}_spike_coverage.txt | awk '$3>=100' | wc -l)/3822))
+        cov200=$((100*$(cat \${R1}_spike_coverage.txt | awk '$3>=200' | wc -l)/3822))
+
     else
-       printf '>\$R1\n' > \${R1}_swift.fasta
-       printf 'n%.0s' {1..29539}
+       echo "Empty bam detected. Generating empty consensus fasta file..."
+       printf '>!{base}\n' > \${R1}_swift.fasta
+       printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
+       avgcoverage=0
+       cov100=0
+       cov200=0
+       percent_n=100
     fi
     
-    # Find percent ns, doesn't work, fix later in python script
-    num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
-    num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
-    percent_n=$(($num_ns/$num_bases*100))
-
-    # Spike protein coverage
-    /usr/local/miniconda/bin/samtools depth -a -r NC_045512.2:21563-25384 !{BAMFILE} > \${R1}_spike_coverage.txt
-    avgcoverage=$(cat \${R1}_spike_coverage.txt | awk '{sum+=$3} END { print sum/NR}')
-    proteinlength=$((25384-21563+1))
-    cov100=$((100*$(cat \${R1}_spike_coverage.txt | awk '$3>=100' | wc -l)/3822))
-    cov200=$((100*$(cat \${R1}_spike_coverage.txt | awk '$3>=200' | wc -l)/3822))
-
     printf ",\$avgcoverage,\$cov100,\$cov200,\$percent_n" >> \${R1}_summary.csv
 
     cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
     mv a.tmp \${R1}_summary.csv
+    gunzip \${R1}.vcf.gz
+    mv \${R1}.vcf \${R1}_bcftools.vcf
 
-    python3 !{FIX_COVERAGE} \${R1}
-    mv \${R1}_summary_fixed.csv \${R1}_summary.csv
+
+    if [[ $bamsize > 92 ]]
+    then
+        python3 !{FIX_COVERAGE} \${R1}
+        mv \${R1}_summary_fixed.csv \${R1}_summary.csv
+    fi
 
     [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
 
