@@ -91,7 +91,7 @@ process Trimming {
       tuple val(base), file(R1), file(R2) from input_read_ch
       file ADAPTERS
     output: 
-      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv"),file("${base}_log.txt") into Trim_out_ch
+      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") into Trim_out_ch
       tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") into Trim_out_ch2
 
     publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*fastq*'
@@ -122,8 +122,6 @@ process Trimming {
     echo Sample_Name,Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Percent_N > ${base}_summary.csv
     printf "${base},\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed,\$percent_trimmed" >> ${base}_summary.csv
     
-    cp .command.log ${base}_log.txt
-
     """
 }
 
@@ -162,7 +160,7 @@ process Aligning {
       tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv"),file("${base}_log.txt") from Trim_out_ch
       file REFERENCE_FASTA
     output:
-      tuple val(base), file("${base}.bam"),file("${base}_summary.csv"),file("${base}_log.txt") into Aligned_bam_ch
+      tuple val(base), file("${base}.bam"),file("${base}_summary.csv") into Aligned_bam_ch
 
     cpus 4 
     memory '6 GB'
@@ -172,11 +170,9 @@ process Aligning {
     #!/bin/bash
 
     cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
-    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g
-    reads_mapped=\$(cat .command.log | grep "mapped:" | cut -d\$'\\t' -f3)
+    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
+    reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
     printf ",\$reads_mapped" >> ${base}_summary.csv
-
-    cat .command.log >> ${base}_log.txt
 
     """
 
@@ -206,7 +202,7 @@ process Trimming_SE {
       file R1 from input_read_ch
       file ADAPTERS
     output: 
-      tuple env(base),file("*.trimmed.fastq.gz"),file("*summary.csv"),file("*log.txt") into Trim_out_ch_SE
+      tuple env(base),file("*.trimmed.fastq.gz"),file("*summary.csv") into Trim_out_ch_SE
       tuple env(base),file("*.trimmed.fastq.gz") into Trim_out_ch2_SE
 
     publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*fastq*'
@@ -229,8 +225,6 @@ process Trimming_SE {
     
     echo Sample_Name,Raw_Reads,Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Percent_N > \$base'_summary.csv'
     printf "\$base,\$num_untrimmed,\$num_trimmed,\$percent_trimmed" >> \$base'_summary.csv'
-    
-    cp .command.log \$base'_log.txt'
 
     ls -latr
     """
@@ -267,10 +261,10 @@ process Aligning_SE {
     maxRetries 3
 
     input: 
-      tuple val(base),file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv"),file("${base}_log.txt") from Trim_out_ch_SE
+      tuple val(base),file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch_SE
       file REFERENCE_FASTA
     output:
-      tuple val (base), file("${base}.bam"),file("${base}_summary.csv"),file("${base}_log.txt") into Aligned_bam_ch
+      tuple val (base), file("${base}.bam"),file("${base}_summary.csv") into Aligned_bam_ch
 
     cpus 4 
     memory '6 GB'
@@ -280,11 +274,9 @@ process Aligning_SE {
     #!/bin/bash
 
     base=`basename ${base}.trimmed.fastq.gz ".trimmed.fastq.gz"`
-    /usr/local/bin/bbmap.sh in1="\$base".trimmed.fastq.gz  outm="\$base".bam ref=${REFERENCE_FASTA} -Xmx6g sam=1.3
-    reads_mapped=\$(cat .command.log | grep "mapped:" | cut -d\$'\\t' -f3)
+    /usr/local/bin/bbmap.sh in1="\$base".trimmed.fastq.gz  outm="\$base".bam ref=${REFERENCE_FASTA} -Xmx6g sam=1.3 > bbmap_out.txt 2>&1
+    reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
     printf ",\$reads_mapped" >> ${base}_summary.csv
-
-    cat .command.log >> ${base}_log.txt
 
     """
 }
@@ -298,16 +290,14 @@ process NameSorting {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.bam"),file("${base}_summary.csv"),file("${base}_log.txt") from Aligned_bam_ch
+      tuple val (base), file("${base}.bam"),file("${base}_summary.csv") from Aligned_bam_ch
     output:
-      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv"),file("${base}_log.txt") into Sorted_sam_ch
+      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv") into Sorted_sam_ch
 
     script:
     """
     #!/bin/bash
     samtools sort -@ ${task.cpus} -n -O sam ${base}.bam > ${base}.sorted.sam
-
-    cat .command.log >> ${base}_log.txt
 
     """
 }
@@ -320,53 +310,29 @@ process Clipping {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv"),file("${base}_log.txt") from Sorted_sam_ch
+      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary.csv") from Sorted_sam_ch
       file MASTERFILE
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary.csv"),file("${base}_log.txt") into Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary.csv") into Clipped_bam_ch
       tuple val (base), file("${base}.clipped.bam"), file("*.bai") into Clipped_bam_ch2
 
     script:
-    // Paired end primerclip option
-    if(params.SINGLE_END == false) { 
         """
         #!/bin/bash
-        /./root/.local/bin/primerclip -s ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
+        /./root/.local/bin/primerclip -s ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam > primerclip_out.txt 2>&1
+    reads_mapped=\$(cat primerclip_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
         #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
         #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
         #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
         /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
         /usr/local/miniconda/bin/samtools index ${base}.clipped.bam
 
-        clipped_reads=\$(cat .command.log | grep "Total mapped alignments" | cut -d\$'\\t' -f2)
+        clipped_reads=\$(cat primerclip_out.txt | grep "Total mapped alignments" | cut -d\$'\\t' -f2)
 
         meancoverage=\$(/usr/local/miniconda/bin/samtools depth -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
         printf ",\$clipped_reads,\$meancoverage" >> ${base}_summary.csv
 
-        cat .command.log >> ${base}_log.txt
-
         """
-    }
-    // Single end primerclip option
-    else {
-        """
-        #!/bin/bash
-        /./root/.local/bin/primerclip -s ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
-        #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
-        #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
-        #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
-        /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
-        /usr/local/miniconda/bin/samtools index ${base}.clipped.bam
-
-        clipped_reads=\$(cat .command.log | grep "Total mapped alignments" | cut -d\$'\\t' -f2)
-
-        meancoverage=\$(/usr/local/miniconda/bin/samtools depth -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
-        printf ",\$clipped_reads,\$meancoverage" >> ${base}_summary.csv
-
-        cat .command.log >> ${base}_log.txt
-
-        """
-    }
 
     
 }
@@ -402,7 +368,7 @@ process generateConsensus {
     maxRetries 3
 
     input:
-        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary.csv"),file("${base}_log.txt") from Clipped_bam_ch
+        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary.csv") from Clipped_bam_ch
         file REFERENCE_FASTA
         file TRIM_ENDS
         file FIX_COVERAGE
@@ -503,8 +469,6 @@ process generateConsensus {
     fi
 
     [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
-
-    cat .command.log >> \${R1}_log.txt
 
     '''
 }
