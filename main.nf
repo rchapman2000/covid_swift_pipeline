@@ -157,7 +157,7 @@ process Aligning {
     maxRetries 3
 
     input: 
-      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv"),file("${base}_log.txt") from Trim_out_ch
+      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch
       file REFERENCE_FASTA
     output:
       tuple val(base), file("${base}.bam"),file("${base}_summary.csv") into Aligned_bam_ch
