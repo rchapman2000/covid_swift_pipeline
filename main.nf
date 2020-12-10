@@ -321,8 +321,8 @@ process Clipping {
       tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") from Sorted_sam_ch
       file MASTERFILE
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv") into Clipped_bam_ch
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai") into Clipped_bam_ch2
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
 
     script:
         """
@@ -334,15 +334,33 @@ process Clipping {
         /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
         /usr/local/miniconda/bin/samtools index ${base}.clipped.bam
 
-        clipped_reads=\$(cat .command.log | grep "Total mapped alignments" | cut -d\$'\\t' -f2)
+        clipped_reads=\$(/usr/local/miniconda/bin/samtools flagstat ${base}.clipped.bam | grep "mapped (" | awk '{print \$1}')
+        echo "clipped reads: \$clipped_reads"
 
         meancoverage=\$(/usr/local/miniconda/bin/samtools depth -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
+
+        bamsize=\$((\$(wc -c ${base}.clipped.bam | awk '{print \$1'})+0))
+        echo "bamsize: \$bamsize"
+
+        if (( \$bamsize > 92 ))
+        then
+            # Spike protein coverage
+            /usr/local/miniconda/bin/samtools depth -a -r NC_045512.2:21563-25384 ${base}.clipped.bam > ${base}_spike_coverage.txt
+            avgcoverage=\$(cat ${base}_spike_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
+            proteinlength=\$((25384-21563+1))
+            cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
+            cov200=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=200' | wc -l)/3822))
+
+        else
+            avgcoverage=0
+            cov100=0
+            cov200=0
+        fi
         
         cp ${base}_summary2.csv ${base}_summary3.csv
-        printf ",\$clipped_reads,\$meancoverage" >> ${base}_summary3.csv
+        printf ",\$clipped_reads,\$meancoverage,\$avgcoverage,\$cov100,\$cov200" >> ${base}_summary3.csv
 
         """
-
     
 }
 
@@ -354,7 +372,7 @@ process generateConsensus {
     maxRetries 3
 
     input:
-        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary3.csv") from Clipped_bam_ch
+        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_ch
         file REFERENCE_FASTA
         file TRIM_ENDS
         file FIX_COVERAGE
@@ -376,37 +394,36 @@ process generateConsensus {
 
     R1=`basename !{BAMFILE} .clipped.bam`
 
-    # Parallelize pileup based on number of cores
-    splitnum=$(($((29903/!{task.cpus}))+1))
-    perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
-        xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-            "/usr/local/miniconda/bin/bcftools mpileup \\
-                -f !{REFERENCE_FASTA} -r {} \\
-                --count-orphans \\
-                --no-BAQ \\
-                --max-depth 500000 \\
-                --max-idepth 500000 \\
-                --threads !{task.cpus} \\
-                --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-            !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
-    
-    cat *.vcf.gz > \${R1}_catted.vcf.gz
-    /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
-    gunzip \${R1}_catted.vcf.gz
-    cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre.vcf
-    
-    /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' \${R1}_pre.vcf -o \${R1}.vcf
-    /usr/local/miniconda/bin/bgzip \${R1}.vcf
-    /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
-    cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
-
-    bamsize=$(($(wc -c !{BAMFILE} | awk '{print $1'})+0))
-    echo $bamsize
+    echo "bamsize: !{bamsize}"
 
     #if [ -s !{BAMFILE} ]
     # More reliable way of checking bam size, because of aliases
-    if (( $bamsize > 92 ))
+    if (( !{bamsize} > 92 ))
     then
+        # Parallelize pileup based on number of cores
+        splitnum=$(($((29903/!{task.cpus}))+1))
+        perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
+            xargs -I {} -n 1 -P !{task.cpus} sh -c \\
+                "/usr/local/miniconda/bin/bcftools mpileup \\
+                    -f !{REFERENCE_FASTA} -r {} \\
+                    --count-orphans \\
+                    --no-BAQ \\
+                    --max-depth 500000 \\
+                    --max-idepth 500000 \\
+                    --threads !{task.cpus} \\
+                    --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
+                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
+        
+        cat *.vcf.gz > \${R1}_catted.vcf.gz
+        /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
+        gunzip \${R1}_catted.vcf.gz
+        cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre.vcf
+        
+        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' \${R1}_pre.vcf -o \${R1}.vcf
+        /usr/local/miniconda/bin/bgzip \${R1}.vcf
+        /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
+        cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
+
         /usr/local/miniconda/bin/bedtools genomecov \\
             -bga \\
             -ibam !{BAMFILE} \\
@@ -428,33 +445,25 @@ process generateConsensus {
         num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
         percent_n=$(($num_ns/$num_bases*100))
 
-        # Spike protein coverage
-        /usr/local/miniconda/bin/samtools depth -a -r NC_045512.2:21563-25384 !{BAMFILE} > \${R1}_spike_coverage.txt
-        avgcoverage=$(cat \${R1}_spike_coverage.txt | awk '{sum+=$3} END { print sum/NR}')
-        proteinlength=$((25384-21563+1))
-        cov100=$((100*$(cat \${R1}_spike_coverage.txt | awk '$3>=100' | wc -l)/3822))
-        cov200=$((100*$(cat \${R1}_spike_coverage.txt | awk '$3>=200' | wc -l)/3822))
+        gunzip \${R1}.vcf.gz
+        mv \${R1}.vcf \${R1}_bcftools.vcf
 
     else
        echo "Empty bam detected. Generating empty consensus fasta file..."
        printf '>!{base}\n' > \${R1}_swift.fasta
        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
-       avgcoverage=0
-       cov100=0
-       cov200=0
        percent_n=100
+
+       touch \${R1}_bcftools.vcf
     fi
     
     cp \${R1}_summary3.csv \${R1}_summary.csv
-    printf ",\$avgcoverage,\$cov100,\$cov200,\$percent_n" >> \${R1}_summary.csv
+    printf ",\$percent_n" >> \${R1}_summary.csv
 
     cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
     mv a.tmp \${R1}_summary.csv
-    gunzip \${R1}.vcf.gz
-    mv \${R1}.vcf \${R1}_bcftools.vcf
 
-
-    if [[ $bamsize > 92 ]]
+    if [[ !{bamsize} > 92 ]]
     then
         python3 !{FIX_COVERAGE} \${R1}
         mv \${R1}_summary_fixed.csv \${R1}_summary.csv
@@ -473,7 +482,7 @@ process lofreq {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai") from Clipped_bam_ch2
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
       file REFERENCE_FASTA
     output:
       file("${base}_lofreq.vcf")
@@ -483,8 +492,15 @@ process lofreq {
     script:
     """
     #!/bin/bash
-    lofreq faidx ${REFERENCE_FASTA}
-    /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
+
+    echo ${bamsize}
+    if (( ${bamsize} > 92))
+    then
+        lofreq faidx ${REFERENCE_FASTA}
+        /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
+    else
+        touch ${base}_lofreq.vcf
+    fi
 
     """
 }
