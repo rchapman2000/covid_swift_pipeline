@@ -325,6 +325,9 @@ process Clipping {
       tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
       tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
 
+    publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
+    publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary3.csv'
+
     script:
         """
         #!/bin/bash
@@ -382,7 +385,6 @@ process generateConsensus {
         file SPLITCHR
     output:
         file("${base}_swift.fasta")
-        file("${base}.clipped.bam")
         file("${base}_bcftools.vcf")
         file(INDEX_FILE)
         file("${base}_summary.csv")
