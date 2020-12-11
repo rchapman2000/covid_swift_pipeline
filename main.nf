@@ -421,7 +421,7 @@ process generateConsensus {
         /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre.vcf -o \${R1}.vcf
         /usr/local/miniconda/bin/bgzip \${R1}.vcf
         /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
-        cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus --threads !{task.cpus} \${R1}.vcf.gz > \${R1}.consensus.fa
+        cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
 
         /usr/local/miniconda/bin/bedtools genomecov \\
             -bga \\
