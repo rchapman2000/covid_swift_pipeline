@@ -437,7 +437,7 @@ process generateConsensus {
         -fo \${R1}.consensus.masked.fa
 
         cat !{REFERENCE_FASTA} \${R1}.consensus.masked.fa > align_input.fasta
-        /usr/local/miniconda/bin/mafft --auto align_input.fasta > repositioned.fasta
+        /usr/local/miniconda/bin/mafft --auto --thread !{task.cpus} align_input.fasta > repositioned.fasta
         awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
         
         python3 !{TRIM_ENDS} \${R1}
