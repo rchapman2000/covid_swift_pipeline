@@ -38,6 +38,7 @@ params.SINGLE_END = false
 params.PRIMERS = false
 TRIM_ENDS=file("${baseDir}/trim_ends.py")
 VCFUTILS=file("${baseDir}/vcfutils.pl")
+SPLITCHR=file("${baseDir}/splitchr.txt")
 
 // if INPUT not set
 if (params.INPUT == false) {
@@ -378,6 +379,7 @@ process generateConsensus {
         file FIX_COVERAGE
         file VCFUTILS
         file REFERENCE_FASTA_FAI
+        file SPLITCHR
     output:
         file("${base}_swift.fasta")
         file("${base}.clipped.bam")
@@ -402,7 +404,8 @@ process generateConsensus {
     then
         # Parallelize pileup based on number of cores
         splitnum=$(($((29903/!{task.cpus}))+1))
-        perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
+        #perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
+        cat !{SPLITCHR} | \\
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
                 "/usr/local/miniconda/bin/bcftools mpileup \\
                     -f !{REFERENCE_FASTA} -r {} \\
