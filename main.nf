@@ -208,7 +208,7 @@ process Trimming_SE {
       file R1 from input_read_ch
       file ADAPTERS
     output: 
-      tuple env(base),file("*.trimmed.fastq.gz"),file("*summary.csv"),file("*log.txt") into Trim_out_ch_SE
+      tuple env(base),file("*.trimmed.fastq.gz"),file("*summary.csv") into Trim_out_ch_SE
       tuple env(base),file("*.trimmed.fastq.gz") into Trim_out_ch2_SE
 
     publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*fastq*'
@@ -271,7 +271,6 @@ process Aligning_SE {
       file REFERENCE_FASTA
     output:
       tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
-      tuple val (base), file("*") into Dump_ch
 
     cpus 4 
     memory '6 GB'
