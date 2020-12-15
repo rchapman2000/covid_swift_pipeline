@@ -298,6 +298,8 @@ process NameSorting {
       tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") from Aligned_bam_ch
     output:
       tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") into Sorted_sam_ch
+    
+    publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary.csv'
 
     script:
     """
