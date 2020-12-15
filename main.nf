@@ -337,7 +337,7 @@ process Clipping {
         clipped_reads=\$(/usr/local/miniconda/bin/samtools flagstat ${base}.clipped.bam | grep "mapped (" | awk '{print \$1}')
         echo "clipped reads: \$clipped_reads"
 
-        meancoverage=\$(/usr/local/miniconda/bin/samtools depth -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
+        meancoverage=\$(/usr/local/miniconda/bin/samtools depth -m 0 -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
 
         bamsize=\$((\$(wc -c ${base}.clipped.bam | awk '{print \$1'})+0))
         echo "bamsize: \$bamsize"
@@ -345,7 +345,7 @@ process Clipping {
         if (( \$bamsize > 92 ))
         then
             # Spike protein coverage
-            /usr/local/miniconda/bin/samtools depth -a -r NC_045512.2:21563-25384 ${base}.clipped.bam > ${base}_spike_coverage.txt
+            /usr/local/miniconda/bin/samtools depth -a -r NC_045512.2:21563-25384 -m 0 ${base}.clipped.bam > ${base}_spike_coverage.txt
             avgcoverage=\$(cat ${base}_spike_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
             proteinlength=\$((25384-21563+1))
             cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
