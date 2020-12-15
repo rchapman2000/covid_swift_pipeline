@@ -306,7 +306,7 @@ process NameSorting {
     #!/bin/bash
     samtools sort -@ ${task.cpus} -n -O sam ${base}.bam > ${base}.sorted.sam
 
-    meancoverage=\$(/usr/local/miniconda/bin/samtools depth -m 0 -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
+    meancoverage=\$(samtools depth -m 0 -a ${base}.bam | awk '{sum+=\$3} END { print sum/NR}')
 
         bamsize=\$((\$(wc -c ${base}.bam | awk '{print \$1'})+0))
         echo "bamsize: \$bamsize"
