@@ -306,29 +306,6 @@ process NameSorting {
     #!/bin/bash
     samtools sort -@ ${task.cpus} -n -O sam ${base}.bam > ${base}.sorted.sam
 
-    meancoverage=\$(samtools depth -m 0 -a ${base}.bam | awk '{sum+=\$3} END { print sum/NR}')
-
-        bamsize=\$((\$(wc -c ${base}.bam | awk '{print \$1'})+0))
-        echo "bamsize: \$bamsize"
-
-        if (( \$bamsize > 92 ))
-        then
-            # Spike protein coverage
-            samtools depth -a -r NC_045512.2:21563-25384 -m 0 ${base}.bam > ${base}_spike_coverage.txt
-            avgcoverage=\$(cat ${base}_spike_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
-            proteinlength=\$((25384-21563+1))
-            cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
-            cov200=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=200' | wc -l)/3822))
-
-        else
-            avgcoverage=0
-            cov100=0
-            cov200=0
-        fi
-        
-        cp ${base}_summary2.csv ${base}_bamsummary.csv
-        printf ",,\$meancoverage,\$avgcoverage,\$cov100,\$cov200" >> ${base}_bamsummary.csv
-
     """
 }
 
