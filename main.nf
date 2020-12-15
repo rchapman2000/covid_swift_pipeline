@@ -166,9 +166,6 @@ process Aligning {
       tuple val(base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
       tuple val (base), file("*") into Dump_ch
 
-    cpus 4 
-    memory '6 GB'
-
     script:
     """
     #!/bin/bash
@@ -447,6 +444,10 @@ process generateConsensus {
         num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
         num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
         percent_n=$(($num_ns/$num_bases*100))
+
+        echo "num_bases=$num_bases"
+        echo "num_ns=$num_ns"
+        echo "percent_n=$percent_n"
 
         gunzip \${R1}.vcf.gz
         mv \${R1}.vcf \${R1}_bcftools.vcf
