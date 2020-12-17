@@ -447,7 +447,7 @@ process generateConsensus {
         # Find percent ns, doesn't work, fix later in python script
         num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
         num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
-        percent_n=$(($num_ns/$num_bases*100))
+        percent_n=$(($(($num_ns/$num_bases))*100))
 
         echo "num_bases=$num_bases"
         echo "num_ns=$num_ns"
