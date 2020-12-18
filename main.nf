@@ -433,7 +433,7 @@ process generateConsensus {
             -bga \\
             -ibam !{BAMFILE} \\
             -g !{REFERENCE_FASTA} \\
-            | awk '\$4 < 10' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
+            | awk '\$4 < 6' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
         /usr/local/miniconda/bin/bedtools maskfasta \\
         -fi \${R1}.consensus.fa \\
         -bed \${R1}.mask.bed \\
