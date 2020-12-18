@@ -417,16 +417,15 @@ process generateConsensus {
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} > \${R1}.pileup
-        
-        cat \${R1}.pileup | /usr/local/miniconda/bin/bcftools call -m -Oz --ploidy 1 - > tmp.{}.vcf.gz"
+                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
         
         cat *.vcf.gz > \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
         gunzip \${R1}_catted.vcf.gz
         cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre.vcf
         
-        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre.vcf -o \${R1}.vcf
+        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0) && IMF >=0.5' --threads !{task.cpus} \${R1}_pre.vcf -o \${R1}_pre2.vcf
+        /usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
         /usr/local/miniconda/bin/bgzip \${R1}.vcf
         /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
         cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
