@@ -376,10 +376,10 @@ process lofreq {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) from Clipped_bam_ch2
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_ch2
       file REFERENCE_FASTA
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize),file("${base}_lofreq.vcf") into Lofreq_ch
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),val(bamsize),file("${base}_lofreq.vcf") into Lofreq_ch
     
     script:
     """
@@ -405,7 +405,7 @@ process generateConsensus {
     maxRetries 3
 
     input:
-        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize),file("${base}_lofreq.vcf") from Lofreq_ch
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),val(bamsize),file("${base}_lofreq.vcf") from Lofreq_ch
         file REFERENCE_FASTA
         file TRIM_ENDS
         file FIX_COVERAGE
