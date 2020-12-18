@@ -388,7 +388,6 @@ process generateConsensus {
         file("${base}_bcftools.vcf")
         file(INDEX_FILE)
         file("${base}_summary.csv")
-        file("${base}.pileup")
 
     publishDir params.OUTDIR, mode: 'copy'
 
