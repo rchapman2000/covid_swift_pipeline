@@ -75,6 +75,7 @@ else {
 ADAPTERS = file("${baseDir}/All_adapters.fa")
 FIX_COVERAGE = file("${baseDir}/fix_coverage.py")
 PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
+SGRNAS=file("${baseDir}/sgRNAs_120bp.fasta")
 
 if(params.SINGLE_END == false){ 
     input_read_ch = Channel
@@ -162,6 +163,7 @@ process Aligning {
     input: 
       tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch
       file REFERENCE_FASTA
+      file SGRNAS
     output:
       tuple val(base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
       tuple val (base), file("*") into Dump_ch
@@ -171,7 +173,8 @@ process Aligning {
     #!/bin/bash
 
     cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
-    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
+    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}_sgrnas.bam ref=${SG_RNAS} outu=${base}_unmapped.fq maxindel=50 strictmaxindel=T -Xmx6g
+    /usr/local/bin/bbmap.sh in=${base}_unmapped.fq outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
     reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
 
     cp ${base}_summary.csv ${base}_summary2.csv
