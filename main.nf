@@ -409,8 +409,8 @@ process generateConsensus {
     then
         # Parallelize pileup based on number of cores
         splitnum=$(($((29903/!{task.cpus}))+1))
-        #perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
-        cat !{SPLITCHR} | \\
+        perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
+        #cat !{SPLITCHR} | \\
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
                 "/usr/local/miniconda/bin/bcftools mpileup \\
                     -f !{REFERENCE_FASTA} -r {} \\
