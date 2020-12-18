@@ -320,8 +320,8 @@ process Clipping {
       tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") from Sorted_sam_ch
       file MASTERFILE
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
+      //tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch2
 
     publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
     publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary3.csv'
@@ -368,6 +368,35 @@ process Clipping {
     
 }
 
+process lofreq {
+    container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
+
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) from Clipped_bam_ch2
+      file REFERENCE_FASTA
+    output:
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize),file("${base}_lofreq.vcf") into Lofreq_ch
+    
+    script:
+    """
+    #!/bin/bash
+
+    echo ${bamsize}
+    if (( ${bamsize} > 92))
+    then
+        lofreq faidx ${REFERENCE_FASTA}
+        /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
+    else
+        touch ${base}_lofreq.vcf
+    fi
+
+    """
+}
+
 process generateConsensus {
     container "quay.io/greninger-lab/swift-pipeline:latest"
 
@@ -376,7 +405,7 @@ process generateConsensus {
     maxRetries 3
 
     input:
-        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_ch
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize),file("${base}_lofreq.vcf") from Lofreq_ch
         file REFERENCE_FASTA
         file TRIM_ENDS
         file FIX_COVERAGE
@@ -385,7 +414,8 @@ process generateConsensus {
         file SPLITCHR
     output:
         file("${base}_swift.fasta")
-        file("${base}_bcftools.vcf")
+        file("${base}_lofreq.vcf")
+        file("${base}.vcf")
         file(INDEX_FILE)
         file("${base}_summary.csv")
         file("${base}.pileup")
@@ -405,30 +435,11 @@ process generateConsensus {
     # More reliable way of checking bam size, because of aliases
     if (( !{bamsize} > 92 ))
     then
-        # Parallelize pileup based on number of cores
-        splitnum=$(($((29903/!{task.cpus}))+1))
-        #perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
-        cat !{SPLITCHR} | \\
-            xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-                "/usr/local/miniconda/bin/bcftools mpileup \\
-                    -f !{REFERENCE_FASTA} -r {} \\
-                    --count-orphans \\
-                    --no-BAQ \\
-                    --max-depth 50000 \\
-                    --max-idepth 500000 \\
-                    --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} > \${R1}.pileup
-        
-        cat \${R1}.pileup | /usr/local/miniconda/bin/bcftools call -m -Oz --ploidy 1 - > tmp.{}.vcf.gz"
-        
-        cat *.vcf.gz > \${R1}_catted.vcf.gz
-        /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
-        gunzip \${R1}_catted.vcf.gz
-        cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre.vcf
-        
-        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre.vcf -o \${R1}.vcf
+        /usr/local/miniconda/bin/bcftools filter -i 'AF>=0.5' --threads !{task.cpus} \${R1}_lofreq.vcf -o \${R1}.vcf
         /usr/local/miniconda/bin/bgzip \${R1}.vcf
-        /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
+        /usr/local/miniconda/bin/tabix \${R1}.vcf.gz
+        gunzip \${R1}.vcf.gz
+        
         cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
 
         /usr/local/miniconda/bin/bedtools genomecov \\
@@ -457,7 +468,6 @@ process generateConsensus {
         echo "percent_n=$percent_n"
 
         gunzip \${R1}.vcf.gz
-        mv \${R1}.vcf \${R1}_bcftools.vcf
 
     else
        echo "Empty bam detected. Generating empty consensus fasta file..."
@@ -465,7 +475,7 @@ process generateConsensus {
        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
        percent_n=100
 
-       touch \${R1}_bcftools.vcf
+       touch \${R1}.vcf
     fi
     
     cp \${R1}_summary3.csv \${R1}_summary.csv
@@ -485,33 +495,123 @@ process generateConsensus {
     '''
 }
 
-process lofreq {
-    container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
 
-	// Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
 
-    input:
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
-      file REFERENCE_FASTA
-    output:
-      file("${base}_lofreq.vcf")
+
+// // Deprecated bcftools consensus generation
+// process generateConsensus {
+//     container "quay.io/greninger-lab/swift-pipeline:latest"
+
+// 	// Retry on fail at most three times 
+//     errorStrategy 'retry'
+//     maxRetries 3
+
+//     input:
+//         tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_ch
+//         file REFERENCE_FASTA
+//         file TRIM_ENDS
+//         file FIX_COVERAGE
+//         file VCFUTILS
+//         file REFERENCE_FASTA_FAI
+//         file SPLITCHR
+//     output:
+//         file("${base}_swift.fasta")
+//         file("${base}_bcftools.vcf")
+//         file(INDEX_FILE)
+//         file("${base}_summary.csv")
+//         file("${base}.pileup")
+
+//     publishDir params.OUTDIR, mode: 'copy'
+
+//     shell:
+//     '''
+//     #!/bin/bash
+//     ls -latr
+
+//     R1=`basename !{BAMFILE} .clipped.bam`
+
+//     echo "bamsize: !{bamsize}"
+
+//     #if [ -s !{BAMFILE} ]
+//     # More reliable way of checking bam size, because of aliases
+//     if (( !{bamsize} > 92 ))
+//     then
+//         # Parallelize pileup based on number of cores
+//         splitnum=$(($((29903/!{task.cpus}))+1))
+//         #perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
+//         cat !{SPLITCHR} | \\
+//             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
+//                 "/usr/local/miniconda/bin/bcftools mpileup \\
+//                     -f !{REFERENCE_FASTA} -r {} \\
+//                     --count-orphans \\
+//                     --no-BAQ \\
+//                     --max-depth 50000 \\
+//                     --max-idepth 500000 \\
+//                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
+//                 !{BAMFILE} > \${R1}.pileup
+        
+//         cat \${R1}.pileup | /usr/local/miniconda/bin/bcftools call -m -Oz --ploidy 1 - > tmp.{}.vcf.gz"
+        
+//         cat *.vcf.gz > \${R1}_catted.vcf.gz
+//         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
+//         gunzip \${R1}_catted.vcf.gz
+//         cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre.vcf
+        
+//         /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre.vcf -o \${R1}.vcf
+//         /usr/local/miniconda/bin/bgzip \${R1}.vcf
+//         /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
+//         cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
+
+//         /usr/local/miniconda/bin/bedtools genomecov \\
+//             -bga \\
+//             -ibam !{BAMFILE} \\
+//             -g !{REFERENCE_FASTA} \\
+//             | awk '\$4 < 10' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
+//         /usr/local/miniconda/bin/bedtools maskfasta \\
+//         -fi \${R1}.consensus.fa \\
+//         -bed \${R1}.mask.bed \\
+//         -fo \${R1}.consensus.masked.fa
+
+//         cat !{REFERENCE_FASTA} \${R1}.consensus.masked.fa > align_input.fasta
+//         /usr/local/miniconda/bin/mafft --auto --thread !{task.cpus} align_input.fasta > repositioned.fasta
+//         awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
+        
+//         python3 !{TRIM_ENDS} \${R1}
+
+//         # Find percent ns, doesn't work, fix later in python script
+//         num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
+//         num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
+//         percent_n=$(($(($num_ns/$num_bases))*100))
+
+//         echo "num_bases=$num_bases"
+//         echo "num_ns=$num_ns"
+//         echo "percent_n=$percent_n"
+
+//         gunzip \${R1}.vcf.gz
+//         mv \${R1}.vcf \${R1}_bcftools.vcf
+
+//     else
+//        echo "Empty bam detected. Generating empty consensus fasta file..."
+//        printf '>!{base}\n' > \${R1}_swift.fasta
+//        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
+//        percent_n=100
+
+//        touch \${R1}_bcftools.vcf
+//     fi
     
-    publishDir params.OUTDIR, mode: 'copy'
+//     cp \${R1}_summary3.csv \${R1}_summary.csv
+//     printf ",\$percent_n" >> \${R1}_summary.csv
 
-    script:
-    """
-    #!/bin/bash
+//     cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
+//     mv a.tmp \${R1}_summary.csv
 
-    echo ${bamsize}
-    if (( ${bamsize} > 92))
-    then
-        lofreq faidx ${REFERENCE_FASTA}
-        /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
-    else
-        touch ${base}_lofreq.vcf
-    fi
+//     if [[ !{bamsize} > 92 ]]
+//     then
+//         python3 !{FIX_COVERAGE} \${R1}
+//         mv \${R1}_summary_fixed.csv \${R1}_summary.csv
+//     fi
 
-    """
-}
+//     [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
+
+//     '''
+// }
