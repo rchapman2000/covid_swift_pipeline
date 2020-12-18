@@ -388,6 +388,7 @@ process generateConsensus {
         file("${base}_bcftools.vcf")
         file(INDEX_FILE)
         file("${base}_summary.csv")
+        file("${base}.pileup")
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -416,7 +417,9 @@ process generateConsensus {
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
+                !{BAMFILE} > \${R1}.pileup
+        
+        cat \${R1}.pileup | /usr/local/miniconda/bin/bcftools call -m -Oz --ploidy 1 - > tmp.{}.vcf.gz"
         
         cat *.vcf.gz > \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
