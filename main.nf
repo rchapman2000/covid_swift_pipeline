@@ -172,10 +172,9 @@ process Aligning {
     """
     #!/bin/bash
 
-    cat ${base}*R1*.fastq.gz > ${base}_cat_R1.fastq.gz
-    cat ${base}*R2*.fastq.gz > ${base}_cat_R2.fastq.gz
-    /usr/local/bin/bbmap.sh in1=${base}_cat_R1.fastq.gz in2=${base}_cat_R2.fastq.gz outm=${base}_sgrnas.bam ref=${SG_RNAS} outu1=${base}_unmapped_r1.fq outu2=${base}_unmapped_r2.fq maxindel=50 strictmaxindel=T -Xmx6g
-    /usr/local/bin/bbmap.sh in1=${base}_unmapped_r1.fq in2=${base}_unmapped_r2.fq outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
+    cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
+    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}_sgrnas.bam ref=${SG_RNAS} outu=${base}_unmapped.fq maxindel=50 strictmaxindel=T -Xmx6g
+    /usr/local/bin/bbmap.sh in=${base}_unmapped.fq outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
     reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
 
     cp ${base}_summary.csv ${base}_summary2.csv
@@ -281,7 +280,8 @@ process Aligning_SE {
     #!/bin/bash
 
     base=`basename ${base}.trimmed.fastq.gz ".trimmed.fastq.gz"`
-    /usr/local/bin/bbmap.sh in1="\$base".trimmed.fastq.gz  outm="\$base".bam ref=${REFERENCE_FASTA} -Xmx6g sam=1.3 > bbmap_out.txt 2>&1
+    /usr/local/bin/bbmap.sh in=${base}_trimmed.fastq.gz outm=${base}_sgrnas.bam ref=${SG_RNAS} outu=${base}_unmapped.fq maxindel=50 strictmaxindel=T -Xmx6g
+    /usr/local/bin/bbmap.sh in=${base}_unmapped.fq outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
     reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
     
     cp ${base}_summary.csv ${base}_summary2.csv
@@ -335,7 +335,7 @@ process Clipping {
         #!/bin/bash
 
         ls -latr
-        /./root/.local/bin/primerclip ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
+        /./root/.local/bin/primerclip -s ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
         #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
         #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
         #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
@@ -411,7 +411,7 @@ process generateConsensus {
         # Parallelize pileup based on number of cores
         splitnum=$(($((29903/!{task.cpus}))+1))
         perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
-        #cat !{SPLITCHR} | \\
+        # cat !{SPLITCHR} | \\
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
                 "/usr/local/miniconda/bin/bcftools mpileup \\
                     -f !{REFERENCE_FASTA} -r {} \\
