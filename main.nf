@@ -173,7 +173,7 @@ process Aligning {
     #!/bin/bash
 
     cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
-    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}_sgrnas.bam ref=${SG_RNAS} outu=${base}_unmapped.fq maxindel=50 strictmaxindel=T -Xmx6g
+    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}_sgrnas.bam ref=${SGRNAS} outu=${base}_unmapped.fq maxindel=50 strictmaxindel=T -Xmx6g
     /usr/local/bin/bbmap.sh in=${base}_unmapped.fq outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
     reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
 
@@ -269,7 +269,7 @@ process Aligning_SE {
     input: 
       tuple val(base),file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch_SE
       file REFERENCE_FASTA
-      file SG_RNAS
+      file SGRNAS
     output:
       tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
 
@@ -281,7 +281,7 @@ process Aligning_SE {
     #!/bin/bash
 
     base=`basename ${base}.trimmed.fastq.gz ".trimmed.fastq.gz"`
-    /usr/local/bin/bbmap.sh in=${base}_trimmed.fastq.gz outm=${base}_sgrnas.bam ref=${SG_RNAS} outu=${base}_unmapped.fq maxindel=50 strictmaxindel=T -Xmx6g
+    /usr/local/bin/bbmap.sh in=${base}_trimmed.fastq.gz outm=${base}_sgrnas.bam ref=${SGRNAS} outu=${base}_unmapped.fq maxindel=50 strictmaxindel=T -Xmx6g
     /usr/local/bin/bbmap.sh in=${base}_unmapped.fq outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
     reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
     
