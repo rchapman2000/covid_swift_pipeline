@@ -269,6 +269,7 @@ process Aligning_SE {
     input: 
       tuple val(base),file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch_SE
       file REFERENCE_FASTA
+      file SG_RNAS
     output:
       tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
 
