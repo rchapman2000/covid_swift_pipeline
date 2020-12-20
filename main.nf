@@ -283,7 +283,7 @@ process Aligning_SE {
     base=`basename ${base}.trimmed.fastq.gz ".trimmed.fastq.gz"`
     #/usr/local/bin/bbmap.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.bam ref=${SGRNAS} outu=${base}_unmapped.fq -Xmx6g
     #/usr/local/bin/bbmap.sh in=${base}_unmapped.fq outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g maxindel=50 strictmaxindel=T > bbmap_out.txt 2>&1
-    /usr/local/bin/bbmap.sh in=${base}.trimmed.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g maxindel=500 strictmaxindel=T > bbmap_out.txt 2>&1
+    /usr/local/bin/bbmap.sh in=${base}.trimmed.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g maxindel=600 strictmaxindel=T > bbmap_out.txt 2>&1
     reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
     
     cp ${base}_summary.csv ${base}_summary2.csv
