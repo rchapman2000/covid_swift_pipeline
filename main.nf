@@ -226,7 +226,7 @@ process Trimming_SE {
     
     percent_trimmed=\$((100-\$((100*num_trimmed/num_untrimmed))))
     
-    echo Sample_Name,Raw_Reads,Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Percent_N > \$base'_summary.csv'
+    echo Sample_Name,Raw_Reads,Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Lowest_Spike_Cov,Percent_N > \$base'_summary.csv'
     printf "\$base,\$num_untrimmed,\$num_trimmed,\$percent_trimmed" >> \$base'_summary.csv'
     
     ls -latr
@@ -354,15 +354,17 @@ process Clipping {
             proteinlength=\$((25384-21563+1))
             cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
             cov200=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=200' | wc -l)/3822))
+            mincov=\$(sort -nk 3 ${base}_spike_coverage.txt | head -n 1 | cut -f3)
 
         else
             avgcoverage=0
             cov100=0
             cov200=0
+            mincov=0
         fi
         
         cp ${base}_summary2.csv ${base}_summary3.csv
-        printf ",\$clipped_reads,\$meancoverage,\$avgcoverage,\$cov100,\$cov200" >> ${base}_summary3.csv
+        printf ",\$clipped_reads,\$meancoverage,\$avgcoverage,\$cov100,\$cov200,\$mincov" >> ${base}_summary3.csv
 
         """
     
