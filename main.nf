@@ -351,7 +351,7 @@ process clipSummary {
     input:
       tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary2.csv"),val(bamsize) from Clipped_bam_ch
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_sum_ch
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv"),val(bamsize) into Clipped_bam_sum_ch
     
     publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary.csv'
 
