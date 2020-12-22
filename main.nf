@@ -320,11 +320,10 @@ process Clipping {
       tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") from Sorted_sam_ch
       file MASTERFILE
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary2.csv"),env(bamsize) into Clipped_bam_ch
       tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
 
     publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
-    publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary3.csv'
 
     script:
         """
@@ -338,10 +337,31 @@ process Clipping {
         /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
         /usr/local/miniconda/bin/samtools index ${base}.clipped.bam
 
-        clipped_reads=\$(/usr/local/miniconda/bin/samtools flagstat ${base}.clipped.bam | grep "mapped (" | awk '{print \$1}')
+        """
+    
+}
+
+process clipSummary { 
+    container "quay.io/biocontainers/samtools:1.3--h0592bc0_3"
+
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary2.csv"),val(bamsize) from Clipped_bam_ch
+    output:
+      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_sum_ch
+    
+    publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary.csv'
+
+    script:
+    """
+    #!/bin/bash
+        clipped_reads=\$(samtools flagstat ${base}.clipped.bam | grep "mapped (" | awk '{print \$1}')
         echo "clipped reads: \$clipped_reads"
 
-        meancoverage=\$(/usr/local/miniconda/bin/samtools depth -m 0 -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
+        meancoverage=\$(samtools depth -m 0 -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
 
         bamsize=\$((\$(wc -c ${base}.clipped.bam | awk '{print \$1'})+0))
         echo "bamsize: \$bamsize"
@@ -349,7 +369,7 @@ process Clipping {
         if (( \$bamsize > 92 ))
         then
             # Spike protein coverage
-            /usr/local/miniconda/bin/samtools depth -a -r NC_045512.2:21563-25384 -m 0 ${base}.clipped.bam > ${base}_spike_coverage.txt
+            samtools depth -a -r NC_045512.2:21563-25384 -m 0 ${base}.clipped.bam > ${base}_spike_coverage.txt
             avgcoverage=\$(cat ${base}_spike_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
             proteinlength=\$((25384-21563+1))
             cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
@@ -366,8 +386,7 @@ process Clipping {
         cp ${base}_summary2.csv ${base}_summary3.csv
         printf ",\$clipped_reads,\$meancoverage,\$avgcoverage,\$cov100,\$cov200,\$mincov" >> ${base}_summary3.csv
 
-        """
-    
+    """
 }
 
 process generateConsensus {
@@ -378,7 +397,7 @@ process generateConsensus {
     maxRetries 3
 
     input:
-        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_ch
+        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_sum_ch
         file REFERENCE_FASTA
         file TRIM_ENDS
         file FIX_COVERAGE
