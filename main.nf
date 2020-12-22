@@ -337,6 +337,9 @@ process Clipping {
         /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
         /usr/local/miniconda/bin/samtools index ${base}.clipped.bam
 
+        bamsize=\$((\$(wc -c ${base}.clipped.bam | awk '{print \$1'})+0))
+        echo "bamsize: \$bamsize"
+
         """
     
 }
@@ -362,9 +365,6 @@ process clipSummary {
         echo "clipped reads: \$clipped_reads"
 
         meancoverage=\$(samtools depth -m 0 -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
-
-        bamsize=\$((\$(wc -c ${base}.clipped.bam | awk '{print \$1'})+0))
-        echo "bamsize: \$bamsize"
 
         if (( \$bamsize > 92 ))
         then
