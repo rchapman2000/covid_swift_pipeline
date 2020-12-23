@@ -364,6 +364,9 @@ process clipSummary {
         clipped_reads=\$(samtools flagstat ${base}.clipped.bam | grep "mapped (" | awk '{print \$1}')
         echo "clipped reads: \$clipped_reads"
 
+        bamsize=\$((\$(wc -c ${base}.clipped.bam | awk '{print \$1'})+0))
+        echo "bamsize: \$bamsize"
+
         meancoverage=\$(samtools depth -m 0 -a ${base}.clipped.bam | awk '{sum+=\$3} END { print sum/NR}')
 
         if (( \$bamsize > 92 ))
