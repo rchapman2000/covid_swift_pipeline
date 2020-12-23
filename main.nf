@@ -320,7 +320,7 @@ process Clipping {
       tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") from Sorted_sam_ch
       file MASTERFILE
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary2.csv"),env(bamsize) into Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary2.csv"),env(bamsize) into Clipped_bam_ch
       tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
 
     publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
@@ -352,9 +352,9 @@ process clipSummary {
     maxRetries 3
 
     input:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary2.csv"),val(bamsize) from Clipped_bam_ch
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary2.csv"),val(bamsize) from Clipped_bam_ch
     output:
-      tuple val (base), file("${base}.clipped.bam"), file("*.bai"),file("${base}_summary3.csv"),val(bamsize) into Clipped_bam_sum_ch
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),val(bamsize) into Clipped_bam_sum_ch
     
     publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary.csv'
 
