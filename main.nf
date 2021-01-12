@@ -4,16 +4,17 @@ def helpMessage() {
     log.info"""
     Usage: 
     An example command for running the pipeline is as follows:
-    nextflow run greninger-lab/covid_swift_pipeline -resume -with-docker ubuntu:18.04 --INPUT example/ --OUTDIR example/output/
+    nextflow run greninger-lab/covid_swift_pipeline -resume -with-docker ubuntu:18.04 --INPUT example/ --OUTDIR example/output/ --PRIMERS v2
     
     Parameters:
         --INPUT         Input folder where all fastqs are located.
                         ./ can be used for current directory.
                         Fastqs should all be gzipped. This can be done with the command gzip *.fastq. [REQUIRED]
         --OUTDIR        Output directory. [REQUIRED]
+        --PRIMERS       Primer masterfile to run. By default, this pipeline uses the original Swift V1 primers. --PRIMERS V2 can be specified for the Swift V2 primer set.
         --SINGLE_END    Optional flag for single end reads. By default, this pipeline does 
                         paired-end reads.
-        --PRIMERS       Primer masterfile to run. By default, this pipeline uses the original Swift V1 primers. --PRIMERS V2 can be specified for the Swift V2 primer set.
+        --VARIANTS      Include variant annotation at the end of the pipeline.
 
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
@@ -36,6 +37,7 @@ params.INPUT = false
 params.OUTDIR= false
 params.SINGLE_END = false
 params.PRIMERS = false
+params.VARIANTS = false
 TRIM_ENDS=file("${baseDir}/trim_ends.py")
 VCFUTILS=file("${baseDir}/vcfutils.pl")
 SPLITCHR=file("${baseDir}/splitchr.txt")
@@ -61,7 +63,7 @@ if (!params.OUTDIR.endsWith("/")){
    exit(1)
 }
 
-//files 
+// Setting up files 
 REFERENCE_FASTA = file("${baseDir}/NC_045512.2.fasta")
 REFERENCE_FASTA_FAI = file("${baseDir}/NC_045512.2.fasta.fai")
 if (params.PRIMERS == "V2" | params.PRIMERS == "v2") {
@@ -75,13 +77,31 @@ else {
 ADAPTERS = file("${baseDir}/All_adapters.fa")
 FIX_COVERAGE = file("${baseDir}/fix_coverage.py")
 PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
+if (params.VARIANTS == false) {
+    println("--VARIANTS not specified. Skipping annotation of amino acid changes at end of pipeline...")
+} else {
+    println("--VARIANTS specified. Will annotate amino acid changes at end of pipeline...")
+}
+AT_REFGENE = file("${baseDir}/annotation/AT_refGene.txt")
+AT_REFGENE_MRNA = file("${baseDir}/annotation/AT_refGeneMrna.fa")
+LAVA_GFF = file("${baseDir}/annotation/lava_ref.gff")
+MAT_PEPTIDES = file("${baseDir}/annotation/mat_peptides.txt")
+MAT_PEPTIDE_ADDITION = file("${baseDir}/annotation/mat_peptide_addition.py")
+RIBOSOMAL_START = file("${baseDir}/annotation/ribosomal_start.txt")
+RIBOSOMAL_SLIPPAGE = file("${baseDir}/annotation/ribosomal_slippage.py")
+PROTEINS = file("${baseDir}/annotation/proteins.csv")
+CORRECT_AF = file("${baseDir}/annotation/correct_AF.py")
 
+/*
+ * PIPELINE
+ */
+
+// Paired end first three steps
 if(params.SINGLE_END == false){ 
     input_read_ch = Channel
         .fromFilePairs("${params.INPUT}*_R{1,2}*.gz")
         .ifEmpty { error "Cannot find any FASTQ pairs in ${params.INPUT} ending with .gz" }
         .map { it -> [it[0], it[1][0], it[1][1]]}
-
 
 process Trimming { 
     container "quay.io/biocontainers/trimmomatic:0.35--6"
@@ -384,6 +404,7 @@ process generateConsensus {
         file("${base}_bcftools.vcf")
         file(INDEX_FILE)
         file("${base}_summary.csv")
+        tuple val(base),val(bamsize),file("${base}_bcftools.vcf") into Vcf_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -508,4 +529,73 @@ process lofreq {
     fi
 
     """
+}
+
+if(params.VARIANTS != false) { 
+    process annotateVariants {
+        errorStrategy 'retry'
+        maxRetries 3
+
+        container "quay.io/vpeddu/lava_image:latest"
+
+        input:
+            tuple val(base),val(bamsize),file("${base}_bcftools.vcf") from Vcf_ch
+            file MAT_PEPTIDES
+            file MAT_PEPTIDE_ADDITION
+            file RIBOSOMAL_SLIPPAGE
+            file RIBOSOMAL_START
+            file PROTEINS
+            file AT_REFGENE
+            file AT_REFGENE_MRNA
+            file CORRECT_AF
+            
+        output: 
+            file("${base}.csv")
+        
+        publishDir params.OUTDIR, mode: 'copy'
+
+        shell:
+        '''
+        #!/bin/bash
+        ls -latr
+        
+        if (( !{bamsize} > 92))
+        then
+            # Fixes ploidy issues.
+            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
+            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
+            
+            # Converts VCF to .avinput for Annovar.
+            file="!{base}""_p.vcf"
+            #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+            convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+            annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
+
+            #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
+            cp !{base}.exonic_variant_function !{base}.txt
+            grep "SNV" !{base}.txt > a.tmp
+            grep "stop" !{base}.txt >> a.tmp
+            mv a.tmp variants.txt
+        
+            awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
+
+            grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
+            grep -v "delins" !{base}.csv > final.csv
+            # Sorts by beginning of mat peptide
+            sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
+            # Adds mature peptide differences from protein start.
+            python3 !{MAT_PEPTIDE_ADDITION}
+            rm mat_peptides.txt
+            # Corrects for ribosomal slippage.
+            python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
+            awk NF final.csv > a.tmp && mv a.tmp final.csv
+            python3 !{CORRECT_AF}
+            cp fixed_variants.txt !{base}.csv
+        else 
+            echo "Bam is empty, skipping annotation."
+            touch !{base}.csv
+        fi
+
+        '''
+    }
 }
