@@ -365,7 +365,7 @@ process Clipping {
         if (( \$bamsize > 92 ))
         then
             # Spike protein coverage
-            sed -n '/21563/,/25384/p' ${base}_coverage.txt > ${base}_spike_coverage.txt
+            awk '\$2 ~ /21563/,\$2 ~ /25384/' ${base}_coverage.txt > ${base}_spike_coverage.txt
             avgcoverage=\$(cat ${base}_spike_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
             proteinlength=\$((25384-21563+1))
             cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
