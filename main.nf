@@ -404,6 +404,7 @@ process generateConsensus {
         file("${base}_bcftools.vcf")
         file(INDEX_FILE)
         file("${base}_summary.csv")
+        file("${base}.clipped.cleaned.bam")
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -473,6 +474,8 @@ process generateConsensus {
         gunzip \${R1}.vcf.gz
         mv \${R1}.vcf \${R1}_bcftools.vcf
 
+        /usr/local/miniconda/bin/samtools view !{BAMFILE} -@ !{task.cpus} | awk -F: '$12 < 600' > \${R1}'.clipped.cleaned.bam'
+
     else
        echo "Empty bam detected. Generating empty consensus fasta file..."
        printf '>!{base}\n' > \${R1}_swift.fasta
@@ -480,6 +483,7 @@ process generateConsensus {
        percent_n=100
 
        touch \${R1}_bcftools.vcf
+       touch \${R1}.clipped.cleaned.bam
     fi
     
     cp \${R1}_summary3.csv \${R1}_summary.csv
