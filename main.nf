@@ -591,7 +591,7 @@ if(params.VARIANTS != false) {
             python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
             awk NF final.csv > a.tmp && mv a.tmp final.csv
             python3 !{CORRECT_AF}
-            cp fixed_variants.txt !{base}.csv
+            sort -h -k2 -t, fixed_variants.txt !{base}.csv
         else 
             echo "Bam is empty, skipping annotation."
             touch !{base}.csv
