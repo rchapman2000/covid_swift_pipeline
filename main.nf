@@ -91,6 +91,8 @@ RIBOSOMAL_START = file("${baseDir}/annotation/ribosomal_start.txt")
 RIBOSOMAL_SLIPPAGE = file("${baseDir}/annotation/ribosomal_slippage.py")
 PROTEINS = file("${baseDir}/annotation/proteins.csv")
 CORRECT_AF = file("${baseDir}/annotation/correct_AF.py")
+CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
+
 
 /*
  * PIPELINE
@@ -405,6 +407,7 @@ process generateConsensus {
         file(INDEX_FILE)
         file("${base}_summary.csv")
         file("${base}.clipped.cleaned.bam")
+        tuple val(base), val(bamsize), file("${base}_bcftools.vcf") into Vcf_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -515,7 +518,6 @@ process lofreq {
       file REFERENCE_FASTA
     output:
       file("${base}_lofreq.vcf")
-      tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch
     
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -543,7 +545,7 @@ if(params.VARIANTS != false) {
         container "quay.io/vpeddu/lava_image:latest"
 
         input:
-            tuple val(base),val(bamsize),file("${base}_lofreq.vcf") from Vcf_ch
+            tuple val(base),val(bamsize),file("${base}_bcftools.vcf") from Vcf_ch
             file MAT_PEPTIDES
             file MAT_PEPTIDE_ADDITION
             file RIBOSOMAL_SLIPPAGE
@@ -551,7 +553,7 @@ if(params.VARIANTS != false) {
             file PROTEINS
             file AT_REFGENE
             file AT_REFGENE_MRNA
-            file CORRECT_AF
+            file CORRECT_AF_BCFTOOLS
             
         output: 
             file("${base}.csv")
@@ -567,8 +569,8 @@ if(params.VARIANTS != false) {
         then
             # Fixes ploidy issues.
             #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-            cp !{base}_lofreq.vcf !{base}_p.vcf
+            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
+            #cp !{base}_lofreq.vcf !{base}_p.vcf
 
             # Converts VCF to .avinput for Annovar.
             file="!{base}""_p.vcf"
@@ -594,7 +596,7 @@ if(params.VARIANTS != false) {
             # Corrects for ribosomal slippage.
             python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
             awk NF final.csv > a.tmp && mv a.tmp final.csv
-            python3 !{CORRECT_AF}
+            python3 !{CORRECT_AF_BCFTOOLS}
             sort -h -k2 -t, fixed_variants.txt > !{base}.csv
         else 
             echo "Bam is empty, skipping annotation."
