@@ -404,7 +404,6 @@ process generateConsensus {
         file("${base}_bcftools.vcf")
         file(INDEX_FILE)
         file("${base}_summary.csv")
-        tuple val(base),val(bamsize),file("${base}_bcftools.vcf") into Vcf_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -512,6 +511,7 @@ process lofreq {
       file REFERENCE_FASTA
     output:
       file("${base}_lofreq.vcf")
+      tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch
     
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -539,7 +539,7 @@ if(params.VARIANTS != false) {
         container "quay.io/vpeddu/lava_image:latest"
 
         input:
-            tuple val(base),val(bamsize),file("${base}_bcftools.vcf") from Vcf_ch
+            tuple val(base),val(bamsize),file("${base}_lofreq.vcf") from Vcf_ch
             file MAT_PEPTIDES
             file MAT_PEPTIDE_ADDITION
             file RIBOSOMAL_SLIPPAGE
@@ -562,9 +562,10 @@ if(params.VARIANTS != false) {
         if (( !{bamsize} > 92))
         then
             # Fixes ploidy issues.
-            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
-            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
-            
+            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
+            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
+            cp !{base}_lofreq.vcf > !{base}_p.vcf
+
             # Converts VCF to .avinput for Annovar.
             file="!{base}""_p.vcf"
             #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
