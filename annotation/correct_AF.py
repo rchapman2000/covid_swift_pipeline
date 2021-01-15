@@ -15,13 +15,14 @@ fixed_file.write("Sample,Position,Protein,AAChange,NucleotideChange,AF,Depth,Typ
 with open("variants.txt") as file1, open("visualization.csv") as file2:
     for line, line2 in zip(file1,file2):
         ad=line.split(";")[3].split("=")[1]
-        allele_ref = int(ad.split(",")[0])
-        allele_alt = int(ad.split(",")[1])
+        print(line)
+        allele_ref = int(ad.split(",")[0]) + int(ad.split(",")[1])
+        allele_alt = int(ad.split(",")[2]) + int(ad.split(",")[3])
         af = allele_alt / (allele_ref + allele_alt) * 100
 
         line_parts = line2.split(",")
         fixed_aa_change = line_parts[1].split(" ")[1]
-        fixed_protein = line_parts[1].split("#")[0] 
+        fixed_protein = line_parts[1].split("#")[0]
         fixed_depth = int(allele_ref + allele_alt)
         if(line_parts[12].rstrip()=="-"):
             mat_peptide = ""
