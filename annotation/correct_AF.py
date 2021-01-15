@@ -33,4 +33,5 @@ with open("variants.txt") as file1, open("visualization.csv") as file2:
             mat_peptide_nuc_change = line_parts[12].split(":")[1].rstrip().split(";")[0].strip()
             mat_peptide_aa_change = line_parts[12].split(":")[1].rstrip().split(";")[1].strip()
 
-        fixed_file.write(line_parts[0] + "," + line_parts[2] + "," + str(fixed_protein) + "," + str(fixed_aa_change) + "," + line_parts[6] + "," + str(af) + "," + str(fixed_depth) + "," + line_parts[8] + "," + mat_peptide + "," + mat_peptide_nuc_change + "," + mat_peptide_aa_change + "\n")
+        if(af >=1 and allele_alt >= 10):
+            fixed_file.write(line_parts[0] + "," + line_parts[2] + "," + str(fixed_protein) + "," + str(fixed_aa_change) + "," + line_parts[6] + "," + str(af) + "," + str(fixed_depth) + "," + line_parts[8] + "," + mat_peptide + "," + mat_peptide_nuc_change + "," + mat_peptide_aa_change + "\n")
