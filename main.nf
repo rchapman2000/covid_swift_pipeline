@@ -518,6 +518,7 @@ process lofreq {
       file REFERENCE_FASTA
     output:
       file("${base}_lofreq.vcf")
+      tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
     
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -556,7 +557,7 @@ if(params.VARIANTS != false) {
             file CORRECT_AF_BCFTOOLS
             
         output: 
-            file("${base}.csv")
+            file("${base}_bcftools_variants.csv")
         
         publishDir params.OUTDIR, mode: 'copy'
 
@@ -597,12 +598,79 @@ if(params.VARIANTS != false) {
             python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
             awk NF final.csv > a.tmp && mv a.tmp final.csv
             python3 !{CORRECT_AF_BCFTOOLS}
-            sort -h -k2 -t, fixed_variants.txt > !{base}.csv
+            sort -h -k2 -t, fixed_variants.txt > !{base}_bcftools_variants.csv
         else 
             echo "Bam is empty, skipping annotation."
-            touch !{base}.csv
+            touch !{base}_bcftools_variants.csv
         fi
 
         '''
     }
+
+    process annotateVariants_Lofreq {
+        errorStrategy 'retry'
+        maxRetries 3
+
+        container "quay.io/vpeddu/lava_image:latest"
+
+        input:
+            tuple val(base),val(bamsize),file("${base}_lofreq.vcf") from Vcf_ch2
+            file MAT_PEPTIDES
+            file MAT_PEPTIDE_ADDITION
+            file RIBOSOMAL_SLIPPAGE
+            file RIBOSOMAL_START
+            file PROTEINS
+            file AT_REFGENE
+            file AT_REFGENE_MRNA
+            file CORRECT_AF
+            
+        output: 
+            file("${base}_lofreq_variants.csv")
+        
+        publishDir params.OUTDIR, mode: 'copy'
+
+        shell:
+        '''
+        #!/bin/bash
+        ls -latr
+        
+        if (( !{bamsize} > 92))
+        then
+            # Fixes ploidy issues.
+            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
+            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
+            cp !{base}_lofreq.vcf !{base}_p.vcf
+
+            # Converts VCF to .avinput for Annovar.
+            file="!{base}""_p.vcf"
+            #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+            convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+            annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
+
+            #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
+            cp !{base}.exonic_variant_function !{base}.txt
+            grep "SNV" !{base}.txt > a.tmp
+            grep "stop" !{base}.txt >> a.tmp
+            mv a.tmp variants.txt
+        
+            awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
+
+            grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
+            grep -v "delins" !{base}.csv > final.csv
+            # Sorts by beginning of mat peptide
+            sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
+            # Adds mature peptide differences from protein start.
+            python3 !{MAT_PEPTIDE_ADDITION}
+            rm mat_peptides.txt
+            # Corrects for ribosomal slippage.
+            python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
+            awk NF final.csv > a.tmp && mv a.tmp final.csv
+            python3 !{CORRECT_AF}
+            sort -h -k2 -t, fixed_variants.txt > !{base}_lofreq_variants.csv
+        else 
+            echo "Bam is empty, skipping annotation."
+            touch !{base}_lofreq_variants.csv
+        fi
+
+        '''
 }
