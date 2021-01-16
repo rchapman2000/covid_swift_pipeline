@@ -673,4 +673,5 @@ if(params.VARIANTS != false) {
         fi
 
         '''
+    }
 }
