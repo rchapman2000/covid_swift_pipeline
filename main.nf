@@ -408,7 +408,7 @@ process generateConsensus {
         file("${base}_summary.csv")
         file("${base}.clipped.cleaned.bam")
         tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
-        tuple val(base), file("${base}.mpileup") into Pileup_ch
+        tuple val(base), file("${base}mpileup") into Pileup_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -427,7 +427,7 @@ process generateConsensus {
     then
         # Parallelize pileup based on number of cores
         /usr/local/miniconda/bin/bcftools mpileup \\
-                    -f !{REFERENCE_FASTA} \\
+                    -f !{REFERENCE_FASTA} -r {} \\
                     --count-orphans \\
                     --no-BAQ \\
                     --max-depth 50000 \\
@@ -435,7 +435,8 @@ process generateConsensus {
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
                 !{BAMFILE} > \${R1}.mpileup
 
-        cat \${R1}.mpileup | /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
+        cat \${R1}.mpileup | /usr/local/miniconda/bin/bcftools call --threads !{task.cpus} --ploidy 1 --keep-alts -m -Oz >> \${R1}_catted.vcf.gz; done
+        /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
         gunzip \${R1}_catted.vcf.gz
         cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre_bcftools.vcf
         
@@ -677,7 +678,7 @@ if(params.VARIANTS != false) {
         container "quay.io/biocontainers/ivar:1.3--h089eab3_0"
 
         input:
-            tuple val(base), file("${base}.mpileup") from Pileup_ch
+            tuple val(base), file("${base}mpileup") from Pileup_ch
             REFERENCE_FASTA
             LAVA_GFF
 
@@ -688,8 +689,8 @@ if(params.VARIANTS != false) {
         
         script:
         """
-        cat ${base}.mpileup | ivar variants -t 0.01 -m 5 -r ${REFERENCE_FASTA} -p ${base}_ivar -g ${LAVA_GFF}
-        cat ${base}.mpileup | ivar consensus -t 0 -m 5 -k -n N -p ${base}_ivar
+        cat ${base}mpileup | ivar variants -t 0.01 -m 5 -r ${REFERENCE_FASTA} -p ${base}_ivar -g ${LAVA_GFF}
+        cat ${base}mpileup | ivar consensus -t 0 -m 5 -k -n N -p ${base}_ivar
         """
 }
 }
