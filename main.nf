@@ -431,12 +431,11 @@ process generateConsensus {
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
                 "/usr/local/miniconda/bin/bcftools mpileup \\
                     -f !{REFERENCE_FASTA} -r {} \\
-                    --count-orphans \\
                     --no-BAQ \\                    
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz --ploidy 1 --keep-alts - > tmp.{}.vcf.gz"
+                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
         
         cat *.vcf.gz > \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
