@@ -395,7 +395,7 @@ process varscan2 {
     maxRetries 3
 
     input:
-        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch3
+        tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) from Clipped_bam_ch3
         file REFERENCE_FASTA
         file REFERENCE_FASTA_FAI
         file SPLITCHR
@@ -409,7 +409,7 @@ process varscan2 {
     #!/bin/bash
     ls -latr
 
-    R1=!{base}
+    R1=`basename !{BAMFILE} .clipped.bam`
 
     echo "bamsize: !{bamsize}"
 
