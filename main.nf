@@ -408,6 +408,7 @@ process generateConsensus {
         file("${base}_summary.csv")
         file("${base}.clipped.cleaned.bam")
         tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
+        tuple val(base), file("${base}.mpileup") into Pileup_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -425,21 +426,16 @@ process generateConsensus {
     if (( !{bamsize} > 92 ))
     then
         # Parallelize pileup based on number of cores
-        splitnum=$(($((29903/!{task.cpus}))+1))
-        #perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
-        cat !{SPLITCHR} | \\
-            xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-                "/usr/local/miniconda/bin/bcftools mpileup \\
-                    -f !{REFERENCE_FASTA} -r {} \\
+        /usr/local/miniconda/bin/bcftools mpileup \\
+                    -f !{REFERENCE_FASTA} \\
                     --count-orphans \\
                     --no-BAQ \\
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
-        
-        cat *.vcf.gz > \${R1}_catted.vcf.gz
-        /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
+                !{BAMFILE} > \${R1}.mpileup
+
+        cat \${R1}.mpileup | /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
         gunzip \${R1}_catted.vcf.gz
         cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre_bcftools.vcf
         
@@ -673,4 +669,27 @@ if(params.VARIANTS != false) {
 
         '''
     }
+
+    process annotateVariants_iVar {
+        errorStrategy 'retry'
+        maxRetries 3
+
+        container "quay.io/biocontainers/ivar:1.3--h089eab3_0"
+
+        input:
+            tuple val(base), file("${base}.mpileup") from Pileup_ch
+            REFERENCE_FASTA
+            LAVA_GFF
+
+        output:
+            file("*ivar*") into Ivar_ch
+               
+        publishDir params.OUTDIR, mode: 'copy'
+        
+        script:
+        """
+        cat ${base}.mpileup | ivar variants -t 0.01 -m 5 -r ${REFERENCE_FASTA} -p ${base}_ivar -g ${LAVA_GFF}
+        cat ${base}.mpileup | ivar consensus -t 0 -m 5 -k -n N -p ${base}_ivar
+        """
+}
 }
