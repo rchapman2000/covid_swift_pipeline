@@ -409,7 +409,7 @@ process varscan2 {
     #!/bin/bash
     ls -latr
 
-    R1=`basename !{BAMFILE} .clipped.bam`
+    R1=!{base}
 
     echo "bamsize: !{bamsize}"
 
