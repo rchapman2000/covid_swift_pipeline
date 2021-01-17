@@ -435,7 +435,7 @@ process generateConsensus {
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
                 !{BAMFILE} > \${R1}.mpileup
 
-        cat \${R1}.mpileup | /usr/local/miniconda/bin/bcftools call --threads !{task.cpus} --ploidy 1 --keep-alts -m -Oz >> \${R1}_catted.vcf.gz; done
+        cat \${R1}.mpileup | /usr/local/miniconda/bin/bcftools call --threads !{task.cpus} --ploidy 1 --keep-alts -m -Oz >> \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
         gunzip \${R1}_catted.vcf.gz
         cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre_bcftools.vcf
