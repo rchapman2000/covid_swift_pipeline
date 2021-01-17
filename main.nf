@@ -435,6 +435,7 @@ process varscan2 {
     else
        touch \${R1}_varscan.vcf
     fi
+    '''
 }
 
 process generateConsensus {
