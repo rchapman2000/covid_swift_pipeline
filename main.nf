@@ -407,7 +407,7 @@ process generateConsensus {
         file(INDEX_FILE)
         file("${base}_summary.csv")
         file("${base}.clipped.cleaned.bam")
-        tuple val(base), val(bamsize), file("${base}_bcftools.vcf") into Vcf_ch
+        tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -441,9 +441,9 @@ process generateConsensus {
         cat *.vcf.gz > \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
         gunzip \${R1}_catted.vcf.gz
-        cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre.vcf
+        cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre_bcftools.vcf
         
-        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre.vcf -o \${R1}_pre2.vcf
+        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre_bcftools.vcf -o \${R1}_pre2.vcf
         /usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
         /usr/local/miniconda/bin/bgzip \${R1}.vcf
         /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
@@ -546,7 +546,7 @@ if(params.VARIANTS != false) {
         container "quay.io/vpeddu/lava_image:latest"
 
         input:
-            tuple val(base),val(bamsize),file("${base}_bcftools.vcf") from Vcf_ch
+            tuple val(base),val(bamsize),file("${base}_pre_bcftools.vcf") from Vcf_ch
             file MAT_PEPTIDES
             file MAT_PEPTIDE_ADDITION
             file RIBOSOMAL_SLIPPAGE
@@ -570,8 +570,7 @@ if(params.VARIANTS != false) {
         then
             # Fixes ploidy issues.
             #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
-            #cp !{base}_lofreq.vcf !{base}_p.vcf
+            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_pre_bcftools.vcf > !{base}_p.vcf
 
             # Converts VCF to .avinput for Annovar.
             file="!{base}""_p.vcf"
