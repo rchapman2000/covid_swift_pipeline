@@ -395,7 +395,7 @@ process varscan2 {
     maxRetries 3
 
     input:
-        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) from Clipped_bam_ch3
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch3
         file REFERENCE_FASTA
         file REFERENCE_FASTA_FAI
         file SPLITCHR
