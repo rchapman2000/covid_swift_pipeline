@@ -387,7 +387,7 @@ process Clipping {
 }
 
 process generateConsensus {
-    container "quay.io/greninger-lab/swift-pipeline:latest"
+    container "quay.io/vpeddu/lava_image:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -435,7 +435,7 @@ process generateConsensus {
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
+                !{BAMFILE} | java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 5 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf.gz"
         
         cat *.vcf.gz > \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
