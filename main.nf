@@ -344,6 +344,7 @@ process Clipping {
     output:
       tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
       tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch3
 
     publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
     publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary3.csv'
@@ -384,6 +385,56 @@ process Clipping {
         printf ",\$clipped_reads,\$meancoverage,\$avgcoverage,\$cov100,\$cov200,\$mincov" >> ${base}_summary3.csv
         """
     
+}
+
+process varscan2 { 
+    container "quay.io/vpeddu/lava_image:latest"
+
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) from Clipped_bam_ch3
+        file REFERENCE_FASTA
+        file REFERENCE_FASTA_FAI
+        file SPLITCHR
+    output:
+        file("${base}_varscan.vcf")
+
+    publishDir params.OUTDIR, mode: 'copy'
+
+    shell:
+    '''
+    #!/bin/bash
+    ls -latr
+
+    R1=`basename !{BAMFILE} .clipped.bam`
+
+    echo "bamsize: !{bamsize}"
+
+    #if [ -s !{BAMFILE} ]
+    # More reliable way of checking bam size, because of aliases
+    if (( !{bamsize} > 92 ))
+    then
+        # Parallelize pileup based on number of cores
+        splitnum=$(($((29903/!{task.cpus}))+1))
+        cat !{SPLITCHR} | \\
+            xargs -I {} -n 1 -P !{task.cpus} sh -c \\
+                "/usr/local/miniconda/bin/samtools mpileup \\
+                    -f !{REFERENCE_FASTA} -r {} \\
+                    -B \\
+                    --max-depth 50000 \\
+                    --max-idepth 500000 \\
+                !{BAMFILE} | 
+                java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf.gz"
+        
+        cat *.vcf.gz > \${R1}_varscan.vcf.gz
+        /usr/local/miniconda/bin/tabix \${R1}_varscan.vcf.gz
+        gunzip \${R1}_varscan.vcf.gz
+    else
+       touch \${R1}_varscan.vcf
+    fi
 }
 
 process generateConsensus {
@@ -435,7 +486,7 @@ process generateConsensus {
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} | java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 5 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf.gz"
+                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
         
         cat *.vcf.gz > \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
