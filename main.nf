@@ -431,7 +431,8 @@ process generateConsensus {
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
                 "/usr/local/miniconda/bin/bcftools mpileup \\
                     -f !{REFERENCE_FASTA} -r {} \\
-                    --no-BAQ \\                    
+                    --count-orphans \\
+                    --no-BAQ \\
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
@@ -447,7 +448,6 @@ process generateConsensus {
         /usr/local/miniconda/bin/bgzip \${R1}.vcf
         /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
         cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
-
         /usr/local/miniconda/bin/bedtools genomecov \\
             -bga \\
             -ibam !{BAMFILE} \\
@@ -457,33 +457,26 @@ process generateConsensus {
         -fi \${R1}.consensus.fa \\
         -bed \${R1}.mask.bed \\
         -fo \${R1}.consensus.masked.fa
-
         cat !{REFERENCE_FASTA} \${R1}.consensus.masked.fa > align_input.fasta
         /usr/local/miniconda/bin/mafft --auto --thread !{task.cpus} align_input.fasta > repositioned.fasta
         awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
         
         python3 !{TRIM_ENDS} \${R1}
-
         # Find percent ns, doesn't work, fix later in python script
         num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
         num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
         percent_n=$(awk -v num_ns=$num_ns -v num_bases=$num_bases 'BEGIN { print ( num_ns * 100 / num_bases ) }')
-
         echo "num_bases=$num_bases"
         echo "num_ns=$num_ns"
         echo "percent_n=$percent_n"
-
         gunzip \${R1}.vcf.gz
         mv \${R1}.vcf \${R1}_bcftools.vcf
-
         /usr/local/miniconda/bin/samtools view !{BAMFILE} -@ !{task.cpus} | awk -F: '$12 < 600' > \${R1}'.clipped.cleaned.bam'
-
     else
        echo "Empty bam detected. Generating empty consensus fasta file..."
        printf '>!{base}\n' > \${R1}_swift.fasta
        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
        percent_n=100
-
        touch \${R1}_bcftools.vcf
        touch \${R1}.clipped.cleaned.bam
     fi
