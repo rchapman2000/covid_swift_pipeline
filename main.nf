@@ -431,7 +431,6 @@ process generateConsensus {
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
                 "/usr/local/miniconda/bin/bcftools mpileup \\
                     -f !{REFERENCE_FASTA} -r {} \\
-                    --count-orphans \\
                     --no-BAQ \\
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
