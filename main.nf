@@ -436,7 +436,7 @@ process generateConsensus {
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
+                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz --ploidy 1 --keep-alts - > tmp.{}.vcf.gz"
         
         cat *.vcf.gz > \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
