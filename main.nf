@@ -408,7 +408,7 @@ process generateConsensus {
         file("${base}_summary.csv")
         file("${base}.clipped.cleaned.bam")
         tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
-        tuple val(base), file("${base}mpileup") into Pileup_ch
+        tuple val(base), val(bamsize),file("${base}.mpileup") into Pileup_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -426,15 +426,19 @@ process generateConsensus {
     if (( !{bamsize} > 92 ))
     then
         # Parallelize pileup based on number of cores
-        /usr/local/miniconda/bin/bcftools mpileup \\
+        splitnum=$(($((29903/!{task.cpus}))+1))
+        #perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
+        cat !{SPLITCHR} | \\
+            xargs -I {} -n 1 -P !{task.cpus} sh -c \\
+                "/usr/local/miniconda/bin/samtools mpileup \\
                     -f !{REFERENCE_FASTA} -r {} \\
                     --count-orphans \\
                     --no-BAQ \\
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
-                    --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} > \${R1}.mpileup
+                !{BAMFILE} > tmp.{}.mpileup"
 
+        cat *.mpileup | awk '!a[$0]++' | grep -v "bcftoolsCommand" > \${R1}.mpileup
         cat \${R1}.mpileup | /usr/local/miniconda/bin/bcftools call --threads !{task.cpus} --ploidy 1 --keep-alts -m -Oz >> \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
         gunzip \${R1}_catted.vcf.gz
@@ -482,6 +486,8 @@ process generateConsensus {
        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
        percent_n=100
 
+       touch \${R1}_pre_bcftools.vcf
+       touch \${R1}.mpileup
        touch \${R1}_bcftools.vcf
        touch \${R1}.clipped.cleaned.bam
     fi
@@ -670,7 +676,7 @@ if(params.VARIANTS != false) {
 
         '''
     }
-
+    
     process annotateVariants_iVar {
         errorStrategy 'retry'
         maxRetries 3
@@ -678,19 +684,24 @@ if(params.VARIANTS != false) {
         container "quay.io/biocontainers/ivar:1.3--h089eab3_0"
 
         input:
-            tuple val(base), file("${base}mpileup") from Pileup_ch
-            REFERENCE_FASTA
-            LAVA_GFF
+            tuple val(base),val(bamsize), file("${base}.mpileup") from Pileup_ch
+            file REFERENCE_FASTA
+            file LAVA_GFF
 
         output:
-            file("*ivar*") into Ivar_ch
+            file("*ivar*") into Ivar_ch optional true
                
         publishDir params.OUTDIR, mode: 'copy'
         
         script:
         """
-        cat ${base}mpileup | ivar variants -t 0.01 -m 5 -r ${REFERENCE_FASTA} -p ${base}_ivar -g ${LAVA_GFF}
-        cat ${base}mpileup | ivar consensus -t 0 -m 5 -k -n N -p ${base}_ivar
+        if (( ${bamsize} > 92))
+        then
+            cat ${base}.mpileup | ivar variants -t 0.01 -m 5 -r ${REFERENCE_FASTA} -p ${base}_ivar -g ${LAVA_GFF}
+            cat ${base}.mpileup | ivar consensus -t 0 -m 5 -k -n N -p ${base}_ivar
+        else 
+            echo "Bam is empty, skipping annotation."
+        fi
         """
 }
 }
