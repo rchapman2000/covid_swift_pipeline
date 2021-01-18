@@ -400,7 +400,7 @@ process varscan2 {
         file REFERENCE_FASTA_FAI
         file SPLITCHR
     output:
-        file("${base}_varscan.vcf") into Vcf_ch
+        tuple val(base),val(bamsize),file("${base}_varscan.vcf") into Vcf_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
