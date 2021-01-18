@@ -474,13 +474,10 @@ process annotateVariants {
             #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
             convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
             annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
-            #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
-            cp !{base}.exonic_variant_function !{base}.txt
-            grep "SNV" !{base}.txt > a.tmp
-            grep "stop" !{base}.txt >> a.tmp
-            mv a.tmp variants.txt
+            awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
+            mv !{base}.txt variants.txt
         
-            awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
+            awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$47+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$44}' variants.txt > !{base}.csv
             grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
             grep -v "delins" !{base}.csv > final.csv
             # Sorts by beginning of mat peptide
