@@ -430,9 +430,7 @@ process varscan2 {
                 !{BAMFILE} | 
                 java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
         
-        $/
-        cat *.vcf | awk '$$1 ~ /^#/ {print $$0;next} {print $$0 | "sort -k1,1 -k2,2n"}' | sed '/^,Description/d' | grep '^[\#\N]' > \${R1}.vcf
-        /$
+        cat *.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' | sed '/^,Description/d' | grep '^[\\#\\N]' > \${R1}.vcf
         /usr/local/miniconda/bin/bgzip \${R1}.vcf
         /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
         cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
