@@ -428,13 +428,13 @@ process varscan2 {
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                 !{BAMFILE} | 
-                java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
+                java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.01 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
         
         for file in *.vcf; do /usr/local/miniconda/bin/bgzip $file; done
         for file in *.vcf.gz; do /usr/local/miniconda/bin/tabix $file; done
         /usr/local/miniconda/bin/bcftools merge *.vcf.gz -Ov -o \${R1}_prefilt.vcf --force-samples
         # cat *.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' | sed '/^,Description/d' | grep '^[\\#\\N]' > \${R1}_prefilt.vcf
-        cat \${R1}_prefilt.vcf | awk 'length($0)<2000' | awk -F":" '($20+0)>=1{print}' > \${R1}.vcf
+        cat \${R1}_prefilt.vcf | awk 'length($0)<2000' > \${R1}.vcf
         /usr/local/miniconda/bin/bgzip \${R1}.vcf
         /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
         cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
