@@ -428,7 +428,7 @@ process varscan2 {
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                 !{BAMFILE} | 
-                java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.01 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
+                java -jar /usr/local/bin/VarScan mpileup2cns --variants --output-vcf 1 --min-coverage 5 --min-var-freq 0.01 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
         
         for file in *.vcf; do /usr/local/miniconda/bin/bgzip $file; done
         for file in *.vcf.gz; do /usr/local/miniconda/bin/tabix $file; done
@@ -444,9 +444,9 @@ process varscan2 {
             -g !{REFERENCE_FASTA} \\
             | awk '\$4 < 6' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
         /usr/local/miniconda/bin/bedtools maskfasta \\
-        -fi \${R1}.consensus.fa \\
-        -bed \${R1}.mask.bed \\
-        -fo \${R1}.consensus.masked.fa
+            -fi \${R1}.consensus.fa \\
+            -bed \${R1}.mask.bed \\
+            -fo \${R1}.consensus.masked.fa
         cat !{REFERENCE_FASTA} \${R1}.consensus.masked.fa > align_input.fasta
         /usr/local/miniconda/bin/mafft --auto --thread !{task.cpus} align_input.fasta > repositioned.fasta
         awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
