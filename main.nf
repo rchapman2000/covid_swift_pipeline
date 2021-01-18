@@ -15,6 +15,7 @@ def helpMessage() {
         --SINGLE_END    Optional flag for single end reads. By default, this pipeline does 
                         paired-end reads.
         --VARIANTS      Include variant annotation at the end of the pipeline.
+        --TRIM_SGRNAS   Include leader sequence in adapters to trim.
 
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
@@ -38,6 +39,7 @@ params.OUTDIR= false
 params.SINGLE_END = false
 params.PRIMERS = false
 params.VARIANTS = false
+params.TRIM_SGRNAS = false
 TRIM_ENDS=file("${baseDir}/trim_ends.py")
 VCFUTILS=file("${baseDir}/vcfutils.pl")
 SPLITCHR=file("${baseDir}/splitchr.txt")
@@ -74,7 +76,13 @@ else {
     MASTERFILE = file("${baseDir}/sarscov2_masterfile.txt")
     println("Using Swift V1 primerset [default]...")
 }
-ADAPTERS = file("${baseDir}/All_adapters.fa")
+if (params.TRIM_SGRNAS != false) {
+    ADAPTERS = file("${baseDir}/All_adapters_sgrna.fa")
+    println("Using adapters to trim sgrnas...")
+}
+else {
+    ADAPTERS = file("${baseDir}/All_adapters.fa")
+}
 FIX_COVERAGE = file("${baseDir}/fix_coverage.py")
 PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
 if (params.VARIANTS == false) {
