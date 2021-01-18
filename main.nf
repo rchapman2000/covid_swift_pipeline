@@ -422,9 +422,9 @@ process varscan2 {
         splitnum=$(($((29903/!{task.cpus}))+1))
         cat !{SPLITCHR} | \\
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-                "/usr/local/miniconda/bin/bcftools mpileup \\
+                "/usr/local/miniconda/bin/samtools mpileup \\
                     -f !{REFERENCE_FASTA} -r {} \\
-                    --no-BAQ \\
+                    -B \\
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                 !{BAMFILE} | 
