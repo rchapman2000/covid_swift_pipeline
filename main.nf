@@ -14,7 +14,6 @@ def helpMessage() {
         --PRIMERS       Primer masterfile to run. By default, this pipeline uses the original Swift V1 primers. --PRIMERS V2 can be specified for the Swift V2 primer set.
         --SINGLE_END    Optional flag for single end reads. By default, this pipeline does 
                         paired-end reads.
-        --VARIANTS      Include variant annotation at the end of the pipeline.
 
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
@@ -98,7 +97,7 @@ CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
  * PIPELINE
  */
 
-// Paired end first three steps
+// Paired end first two steps
 if(params.SINGLE_END == false){ 
     input_read_ch = Channel
         .fromFilePairs("${params.INPUT}*_R{1,2}*.gz")
@@ -173,8 +172,9 @@ process fastQc {
     """
 }
 
-process Aligning {
-     container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
+// Trim 1 nt off 3' end if reads
+process cutAdapt {
+    container "quay.io/biocontainers/cutadapt:3.2--py36h4c5857e_0"
     //container "quay.io/biocontainers/bwa:0.7.17--hed695b0_7	"
 
     // Retry on fail at most three times 
@@ -185,31 +185,18 @@ process Aligning {
       tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch
       file REFERENCE_FASTA
     output:
-      tuple val(base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
-      tuple val (base), file("*") into Dump_ch
+      tuple val(base), file("${base}_trimmed.fastq.gz"), file("${base}_summary.csv") into Cutadapt_ch
 
     script:
     """
     #!/bin/bash
 
     cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
-    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
-    reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
-
-    cp ${base}_summary.csv ${base}_summary2.csv
-    printf ",\$reads_mapped" >> ${base}_summary2.csv
-
+    /usr/local/bin/cutadapt -u -1 -o ${base}_trimmed.fastq.gz ${base}_cat.fastq.gz
     """
-
-    // bwa?
-    // script:
-    // """
-    // #!/bin/bash
-    // bwa mem $workflow.projectDir/NC_045512.2.fasta ${base}.R1.paired.fastq.gz ${base}.R2.paired.fastq.gz > aln.sam
-    // """
 }
 
-// Single end first three steps
+// Single end first two steps
 } else { 
     input_read_ch = Channel
         .fromPath("${params.INPUT}*.gz")
@@ -277,8 +264,9 @@ process fastQc_SE {
     """
 }
 
-process Aligning_SE {
-     container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
+// Trim 1 nt off 3' end if reads
+process cutAdapt_SE {
+    container "quay.io/biocontainers/cutadapt:3.2--py36h4c5857e_0"
     //container "quay.io/biocontainers/bwa:0.7.17--hed695b0_7	"
 
     // Retry on fail at most three times 
@@ -286,27 +274,47 @@ process Aligning_SE {
     maxRetries 3
 
     input: 
-      tuple val(base),file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch_SE
-      file REFERENCE_FASTA
+      tuple val(base),file("*.trimmed.fastq.gz"),file("*summary.csv") from Trim_out_ch_SE
     output:
-      tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
-
-    cpus 4 
-    memory '6 GB'
+      tuple val(base), file("${base}_trimmed.fastq.gz"), file("${base}_summary.csv") into Cutadapt_ch
 
     script:
     """
     #!/bin/bash
 
-    base=`basename ${base}.trimmed.fastq.gz ".trimmed.fastq.gz"`
-    /usr/local/bin/bbmap.sh in1="\$base".trimmed.fastq.gz  outm="\$base".bam ref=${REFERENCE_FASTA} -Xmx6g sam=1.3 > bbmap_out.txt 2>&1
+    cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
+    /usr/local/bin/cutadapt -u -1 -o ${base}_trimmed.fastq.gz ${base}_cat.fastq.gz
+    """
+}
+
+}
+
+process Aligning {
+    container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
+    //container "quay.io/biocontainers/bwa:0.7.17--hed695b0_7	"
+
+    // Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input: 
+      tuple val(base), file("${base}_trimmed.fastq.gz"), file("${base}_summary.csv") from Cutadapt_ch
+      file REFERENCE_FASTA
+    output:
+      tuple val(base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
+      tuple val (base), file("*") into Dump_ch
+
+    script:
+    """
+    #!/bin/bash
+
+    /usr/local/bin/bbmap.sh in=${base}_trimmed.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
     reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
-    
+
     cp ${base}_summary.csv ${base}_summary2.csv
     printf ",\$reads_mapped" >> ${base}_summary2.csv
 
     """
-}
 }
 
 process NameSorting { 
@@ -343,7 +351,7 @@ process Clipping {
       file MASTERFILE
     output:
       tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch2
 
     publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
     publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary3.csv'
@@ -386,6 +394,38 @@ process Clipping {
     
 }
 
+process lofreq {
+    container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
+
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_ch2
+      file REFERENCE_FASTA
+    output:
+      tuple val(base),val(bamsize),file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_lofreq.vcf"),file("${base}_summary3.csv") into Vcf_ch
+      tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
+    
+    publishDir params.OUTDIR, mode: 'copy'
+
+    script:
+    """
+    #!/bin/bash
+
+    echo ${bamsize}
+    if (( ${bamsize} > 92))
+    then
+        lofreq faidx ${REFERENCE_FASTA}
+        /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
+    else
+        touch ${base}_lofreq.vcf
+    fi
+
+    """
+}
+
 process generateConsensus {
     container "quay.io/greninger-lab/swift-pipeline:latest"
 
@@ -394,7 +434,7 @@ process generateConsensus {
     maxRetries 3
 
     input:
-        tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_ch
+        tuple val(base),val(bamsize),file(BAMFILE), file(INDEX_FILE),file("${base}_lofreq.vcf"),file("${base}_summary3.csv") from Vcf_ch
         file REFERENCE_FASTA
         file TRIM_ENDS
         file FIX_COVERAGE
@@ -403,11 +443,8 @@ process generateConsensus {
         file SPLITCHR
     output:
         file("${base}_swift.fasta")
-        file("${base}_bcftools.vcf")
         file(INDEX_FILE)
         file("${base}_summary.csv")
-        file("${base}.clipped.cleaned.bam")
-        tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -416,37 +453,19 @@ process generateConsensus {
     #!/bin/bash
     ls -latr
 
-    R1=`basename !{BAMFILE} .clipped.bam`
+    R1=!{base}
 
     echo "bamsize: !{bamsize}"
 
-    #if [ -s !{BAMFILE} ]
-    # More reliable way of checking bam size, because of aliases
     if (( !{bamsize} > 92 ))
     then
-        # Parallelize pileup based on number of cores
-        splitnum=$(($((29903/!{task.cpus}))+1))
-        #perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
-        cat !{SPLITCHR} | \\
-            xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-                "/usr/local/miniconda/bin/bcftools mpileup \\
-                    -f !{REFERENCE_FASTA} -r {} \\
-                    --count-orphans \\
-                    --max-depth 50000 \\
-                    --max-idepth 500000 \\
-                    --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
-        
-        cat *.vcf.gz > \${R1}_catted.vcf.gz
-        /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
-        gunzip \${R1}_catted.vcf.gz
-        cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre_bcftools.vcf
-        
-        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre_bcftools.vcf -o \${R1}_pre2.vcf
-        /usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
-        /usr/local/miniconda/bin/bgzip \${R1}.vcf
-        /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
-        cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
+        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_lofreq.vcf -o \${R1}_lofreq_filt.vcf
+        #/usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
+
+        /usr/local/miniconda/bin/bgzip \${R1}_lofreq_filt.vcf
+        /usr/local/miniconda/bin/tabix \${R1}_lofreq_filt.vcf.gz
+
+        cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}_lofreq_filt.vcf.gz > \${R1}.consensus.fa
         /usr/local/miniconda/bin/bedtools genomecov \\
             -bga \\
             -ibam !{BAMFILE} \\
@@ -468,16 +487,12 @@ process generateConsensus {
         echo "num_bases=$num_bases"
         echo "num_ns=$num_ns"
         echo "percent_n=$percent_n"
-        gunzip \${R1}.vcf.gz
-        mv \${R1}.vcf \${R1}_bcftools.vcf
-        /usr/local/miniconda/bin/samtools view !{BAMFILE} -@ !{task.cpus} | awk -F: '$12 < 600' > \${R1}'.clipped.cleaned.bam'
+        gunzip \${R1}_lofreq_filt.vcf.gz
     else
        echo "Empty bam detected. Generating empty consensus fasta file..."
        printf '>!{base}\n' > \${R1}_swift.fasta
        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
        percent_n=100
-       touch \${R1}_bcftools.vcf
-       touch \${R1}.clipped.cleaned.bam
     fi
     
     cp \${R1}_summary3.csv \${R1}_summary.csv
@@ -496,106 +511,6 @@ process generateConsensus {
 
     '''
 }
-
-process lofreq {
-    container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
-
-	// Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
-
-    input:
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
-      file REFERENCE_FASTA
-    output:
-      file("${base}_lofreq.vcf")
-      tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
-    
-    publishDir params.OUTDIR, mode: 'copy'
-
-    script:
-    """
-    #!/bin/bash
-
-    echo ${bamsize}
-    if (( ${bamsize} > 92))
-    then
-        lofreq faidx ${REFERENCE_FASTA}
-        /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
-    else
-        touch ${base}_lofreq.vcf
-    fi
-
-    """
-}
-
-if(params.VARIANTS != false) { 
-    process annotateVariants {
-        errorStrategy 'retry'
-        maxRetries 3
-
-        container "quay.io/vpeddu/lava_image:latest"
-
-        input:
-            tuple val(base),val(bamsize),file("${base}_pre_bcftools.vcf") from Vcf_ch
-            file MAT_PEPTIDES
-            file MAT_PEPTIDE_ADDITION
-            file RIBOSOMAL_SLIPPAGE
-            file RIBOSOMAL_START
-            file PROTEINS
-            file AT_REFGENE
-            file AT_REFGENE_MRNA
-            file CORRECT_AF_BCFTOOLS
-            
-        output: 
-            file("${base}_bcftools_variants.csv")
-        
-        publishDir params.OUTDIR, mode: 'copy'
-
-        shell:
-        '''
-        #!/bin/bash
-        ls -latr
-        
-        if (( !{bamsize} > 92))
-        then
-            # Fixes ploidy issues.
-            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_pre_bcftools.vcf > !{base}_p.vcf
-
-            # Converts VCF to .avinput for Annovar.
-            file="!{base}""_p.vcf"
-            #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-            convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-            annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
-
-            #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
-            cp !{base}.exonic_variant_function !{base}.txt
-            grep "SNV" !{base}.txt > a.tmp
-            grep "stop" !{base}.txt >> a.tmp
-            mv a.tmp variants.txt
-        
-            awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
-
-            grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
-            grep -v "delins" !{base}.csv > final.csv
-            # Sorts by beginning of mat peptide
-            sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
-            # Adds mature peptide differences from protein start.
-            python3 !{MAT_PEPTIDE_ADDITION}
-            rm mat_peptides.txt
-            # Corrects for ribosomal slippage.
-            python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
-            awk NF final.csv > a.tmp && mv a.tmp final.csv
-            python3 !{CORRECT_AF_BCFTOOLS}
-            sort -h -k2 -t, fixed_variants.txt > !{base}_bcftools_variants.csv
-        else 
-            echo "Bam is empty, skipping annotation."
-            touch !{base}_bcftools_variants.csv
-        fi
-
-        '''
-    }
 
     process annotateVariants_Lofreq {
         errorStrategy 'retry'
@@ -664,4 +579,3 @@ if(params.VARIANTS != false) {
 
         '''
     }
-}
