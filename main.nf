@@ -498,5 +498,5 @@ process annotateVariants {
             touch !{base}_varscan_variants.csv
         fi
         '''
-    }
+    
 }
