@@ -401,6 +401,7 @@ process varscan2 {
         file SPLITCHR
     output:
         tuple val(base),val(bamsize),file("${base}_varscan.vcf") into Vcf_ch
+        file("${base}_swift.fasta")
 
     publishDir params.OUTDIR, mode: 'copy'
 
