@@ -521,7 +521,7 @@ process lofreq {
     if (( ${bamsize} > 92))
     then
         lofreq faidx ${REFERENCE_FASTA}
-        /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
+        /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
     else
         touch ${base}_lofreq.vcf
     fi
