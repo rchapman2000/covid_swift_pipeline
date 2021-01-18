@@ -455,6 +455,7 @@ process annotateVariants {
             
         output: 
             file("${base}_varscan_variants.csv")
+            file("*")
         
         publishDir params.OUTDIR, mode: 'copy'
 
@@ -467,7 +468,7 @@ process annotateVariants {
         then
             # Fixes ploidy issues.
             #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_varscan.vcf > !{base}_p.vcf
+            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_varscan.vcf > !{base}_p.vcf
             # Converts VCF to .avinput for Annovar.
             file="!{base}""_p.vcf"
             #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
