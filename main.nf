@@ -352,7 +352,7 @@ process Clipping {
     output:
       tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
       tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
-      tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) from Clipped_bam_ch3
+      tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) into Clipped_bam_ch3
 
     publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
     publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary3.csv'
