@@ -66,8 +66,8 @@ if (!params.OUTDIR.endsWith("/")){
 }
 
 // Setting up files 
-REFERENCE_FASTA = file("${baseDir}/NC_045512.2.fasta")
-REFERENCE_FASTA_FAI = file("${baseDir}/NC_045512.2.fasta.fai")
+REFERENCE_FASTA = file("${baseDir}/NC_045512_short.fasta")
+REFERENCE_FASTA_FAI = file("${baseDir}/NC_045512_short.fasta.fai")
 if (params.PRIMERS == "V2" | params.PRIMERS == "v2") {
     MASTERFILE = file("${baseDir}/sarscov2_v2_masterfile.txt")
     println("Using Swift V2 primerset...")
