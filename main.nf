@@ -66,8 +66,8 @@ if (!params.OUTDIR.endsWith("/")){
 }
 
 // Setting up files 
-REFERENCE_FASTA = file("${baseDir}/NC_045512_short.fasta")
-REFERENCE_FASTA_FAI = file("${baseDir}/NC_045512_short.fasta.fai")
+REFERENCE_FASTA = file("${baseDir}/NC_045512.2.fasta")
+REFERENCE_FASTA_FAI = file("${baseDir}/NC_045512.2.fasta.fai")
 if (params.PRIMERS == "V2" | params.PRIMERS == "v2") {
     MASTERFILE = file("${baseDir}/sarscov2_v2_masterfile.txt")
     println("Using Swift V2 primerset...")
@@ -434,7 +434,7 @@ process generateConsensus {
     if (( !{bamsize} > 92 ))
     then
         # Parallelize pileup based on number of cores
-        splitnum=$(($((9500/!{task.cpus}))+1))
+        splitnum=$(($((29803/!{task.cpus}))+1))
         perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
         #cat !{SPLITCHR} | \\
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
