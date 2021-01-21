@@ -415,7 +415,7 @@ process generateConsensus {
         file("${base}_bcftools.vcf")
         file(INDEX_FILE)
         file("${base}_summary.csv")
-        file("${base}.clipped.cleaned.bam")
+        // file("${base}.clipped.cleaned.bam")
         tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
 
     publishDir params.OUTDIR, mode: 'copy'
@@ -444,7 +444,7 @@ process generateConsensus {
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -m -Oz - > tmp.{}.vcf.gz"
+                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -A -m -Oz - > tmp.{}.vcf.gz"
         
         cat *.vcf.gz > \${R1}_catted.vcf.gz
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
@@ -479,7 +479,7 @@ process generateConsensus {
         echo "percent_n=$percent_n"
         gunzip \${R1}.vcf.gz
         mv \${R1}.vcf \${R1}_bcftools.vcf
-        /usr/local/miniconda/bin/samtools view !{BAMFILE} -@ !{task.cpus} | awk -F: '$12 < 600' > \${R1}'.clipped.cleaned.bam'
+        #/usr/local/miniconda/bin/samtools view !{BAMFILE} -@ !{task.cpus} | awk -F: '$12 < 600' > \${R1}'.clipped.cleaned.bam'
     else
        echo "Empty bam detected. Generating empty consensus fasta file..."
        printf '>!{base}\n' > \${R1}_swift.fasta
@@ -506,37 +506,37 @@ process generateConsensus {
     '''
 }
 
-// process lofreq {
-//     container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
+process lofreq {
+    container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
 
-// 	// Retry on fail at most three times 
-//     errorStrategy 'retry'
-//     maxRetries 3
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
 
-//     input:
-//       tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
-//       file REFERENCE_FASTA
-//     output:
-//       file("${base}_lofreq.vcf")
-//       tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
+    input:
+      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
+      file REFERENCE_FASTA
+    output:
+      file("${base}_lofreq.vcf")
+      tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
     
-//     publishDir params.OUTDIR, mode: 'copy'
+    publishDir params.OUTDIR, mode: 'copy'
 
-//     script:
-//     """
-//     #!/bin/bash
+    script:
+    """
+    #!/bin/bash
 
-//     echo ${bamsize}
-//     if (( ${bamsize} > 92))
-//     then
-//         lofreq faidx ${REFERENCE_FASTA}
-//         /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
-//     else
-//         touch ${base}_lofreq.vcf
-//     fi
+    echo ${bamsize}
+    if (( ${bamsize} > 92))
+    then
+        lofreq faidx ${REFERENCE_FASTA}
+        /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
+    else
+        touch ${base}_lofreq.vcf
+    fi
 
-//     """
-// }
+    """
+}
 
 if(params.VARIANTS != false) { 
     process annotateVariants {
@@ -579,10 +579,10 @@ if(params.VARIANTS != false) {
             annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
 
             #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
-            cp !{base}.exonic_variant_function !{base}.txt
-            grep "SNV" !{base}.txt > a.tmp
-            grep "stop" !{base}.txt >> a.tmp
-            mv a.tmp variants.txt
+            cp !{base}.exonic_variant_function variants.txt
+            #grep "SNV" !{base}.txt > a.tmp
+            #grep "stop" !{base}.txt >> a.tmp
+            #mv a.tmp variants.txt
         
             awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
 
@@ -606,117 +606,117 @@ if(params.VARIANTS != false) {
         '''
     }
 
-//     process annotateVariants_Lofreq {
-//         errorStrategy 'retry'
-//         maxRetries 3
+    process annotateVariants_Lofreq {
+        errorStrategy 'retry'
+        maxRetries 3
 
-//         container "quay.io/vpeddu/lava_image:latest"
+        container "quay.io/vpeddu/lava_image:latest"
 
-//         input:
-//             tuple val(base),val(bamsize),file("${base}_lofreq.vcf") from Vcf_ch2
-//             file MAT_PEPTIDES
-//             file MAT_PEPTIDE_ADDITION
-//             file RIBOSOMAL_SLIPPAGE
-//             file RIBOSOMAL_START
-//             file PROTEINS
-//             file AT_REFGENE
-//             file AT_REFGENE_MRNA
-//             file CORRECT_AF
+        input:
+            tuple val(base),val(bamsize),file("${base}_lofreq.vcf") from Vcf_ch2
+            file MAT_PEPTIDES
+            file MAT_PEPTIDE_ADDITION
+            file RIBOSOMAL_SLIPPAGE
+            file RIBOSOMAL_START
+            file PROTEINS
+            file AT_REFGENE
+            file AT_REFGENE_MRNA
+            file CORRECT_AF
             
-//         output: 
-//             file("${base}_lofreq_variants.csv")
+        output: 
+            file("${base}_lofreq_variants.csv")
         
-//         publishDir params.OUTDIR, mode: 'copy'
+        publishDir params.OUTDIR, mode: 'copy'
 
-//         shell:
-//         '''
-//         #!/bin/bash
-//         ls -latr
+        shell:
+        '''
+        #!/bin/bash
+        ls -latr
         
-//         if (( !{bamsize} > 92))
-//         then
-//             # Fixes ploidy issues.
-//             #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-//             #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
-//             cp !{base}_lofreq.vcf !{base}_p.vcf
+        if (( !{bamsize} > 92))
+        then
+            # Fixes ploidy issues.
+            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
+            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
+            cp !{base}_lofreq.vcf !{base}_p.vcf
 
-//             # Converts VCF to .avinput for Annovar.
-//             file="!{base}""_p.vcf"
-//             #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-//             convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-//             annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
+            # Converts VCF to .avinput for Annovar.
+            file="!{base}""_p.vcf"
+            #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+            convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+            annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
 
-//             #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
-//             cp !{base}.exonic_variant_function !{base}.txt
-//             grep "SNV" !{base}.txt > a.tmp
-//             grep "stop" !{base}.txt >> a.tmp
-//             mv a.tmp variants.txt
+            #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
+            cp !{base}.exonic_variant_function !{base}.txt
+            grep "SNV" !{base}.txt > a.tmp
+            grep "stop" !{base}.txt >> a.tmp
+            mv a.tmp variants.txt
         
-//             awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
+            awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
 
-//             grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
-//             grep -v "delins" !{base}.csv > final.csv
-//             # Sorts by beginning of mat peptide
-//             sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
-//             # Adds mature peptide differences from protein start.
-//             python3 !{MAT_PEPTIDE_ADDITION}
-//             rm mat_peptides.txt
-//             # Corrects for ribosomal slippage.
-//             python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
-//             awk NF final.csv > a.tmp && mv a.tmp final.csv
-//             python3 !{CORRECT_AF}
-//             sort -h -k2 -t, fixed_variants.txt > !{base}_lofreq_variants.csv
-//         else 
-//             echo "Bam is empty, skipping annotation."
-//             touch !{base}_lofreq_variants.csv
-//         fi
+            grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
+            grep -v "delins" !{base}.csv > final.csv
+            # Sorts by beginning of mat peptide
+            sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
+            # Adds mature peptide differences from protein start.
+            python3 !{MAT_PEPTIDE_ADDITION}
+            rm mat_peptides.txt
+            # Corrects for ribosomal slippage.
+            python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
+            awk NF final.csv > a.tmp && mv a.tmp final.csv
+            python3 !{CORRECT_AF}
+            sort -h -k2 -t, fixed_variants.txt > !{base}_lofreq_variants.csv
+        else 
+            echo "Bam is empty, skipping annotation."
+            touch !{base}_lofreq_variants.csv
+        fi
 
-//         '''
-//     }
+        '''
+    }
 
-//     process varscan2 { 
-//         container "quay.io/vpeddu/lava_image:latest"
+    process varscan2 { 
+        container "quay.io/vpeddu/lava_image:latest"
 
-//         // Retry on fail at most three times 
-//         errorStrategy 'retry'
-//         maxRetries 3
+        // Retry on fail at most three times 
+        errorStrategy 'retry'
+        maxRetries 3
 
-//         input:
-//             tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) from Clipped_bam_ch3
-//             file REFERENCE_FASTA
-//             file REFERENCE_FASTA_FAI
-//             file SPLITCHR
-//         output:
-//             tuple val(base),val(bamsize),file("${base}_varscan.vcf") into Varscan_ch
+        input:
+            tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) from Clipped_bam_ch3
+            file REFERENCE_FASTA
+            file REFERENCE_FASTA_FAI
+            file SPLITCHR
+        output:
+            tuple val(base),val(bamsize),file("${base}_varscan.vcf") into Varscan_ch
 
-//         publishDir params.OUTDIR, mode: 'copy'
+        publishDir params.OUTDIR, mode: 'copy'
 
-//         shell:
-//         '''
-//         #!/bin/bash
-//         ls -latr
-//         R1=`basename !{BAMFILE} .clipped.bam`
-//         echo "bamsize: !{bamsize}"
-//         #if [ -s !{BAMFILE} ]
-//         # More reliable way of checking bam size, because of aliases
-//         if (( !{bamsize} > 92 ))
-//         then
-//             # Parallelize pileup based on number of cores
-//             splitnum=$(($((29903/!{task.cpus}))+1))
-//             cat !{SPLITCHR} | \\
-//                 xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-//                     "/usr/local/miniconda/bin/samtools mpileup \\
-//                         -f !{REFERENCE_FASTA} -r {} \\
-//                         -B \\
-//                         --max-depth 50000 \\
-//                         --max-idepth 500000 \\
-//                     !{BAMFILE} | 
-//                     java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
+        shell:
+        '''
+        #!/bin/bash
+        ls -latr
+        R1=`basename !{BAMFILE} .clipped.bam`
+        echo "bamsize: !{bamsize}"
+        #if [ -s !{BAMFILE} ]
+        # More reliable way of checking bam size, because of aliases
+        if (( !{bamsize} > 92 ))
+        then
+            # Parallelize pileup based on number of cores
+            splitnum=$(($((29903/!{task.cpus}))+1))
+            cat !{SPLITCHR} | \\
+                xargs -I {} -n 1 -P !{task.cpus} sh -c \\
+                    "/usr/local/miniconda/bin/samtools mpileup \\
+                        -f !{REFERENCE_FASTA} -r {} \\
+                        -B \\
+                        --max-depth 50000 \\
+                        --max-idepth 500000 \\
+                    !{BAMFILE} | 
+                    java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
             
-//             cat *.vcf > \${R1}_varscan.vcf
-//         else
-//         touch \${R1}_varscan.vcf
-//         fi
-//         '''
-// }
+            cat *.vcf > \${R1}_varscan.vcf
+        else
+        touch \${R1}_varscan.vcf
+        fi
+        '''
+}
 }

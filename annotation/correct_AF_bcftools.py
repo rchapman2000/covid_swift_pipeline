@@ -14,7 +14,8 @@ fixed_file.write("Sample,Position,Protein,AAChange,NucleotideChange,AlleleFreq,D
 
 with open("variants.txt") as file1, open("visualization.csv") as file2:
     for line, line2 in zip(file1,file2):
-        ad=line.split(";")[3].split("=")[1]
+        ad=line.split(";")[12].split("=")[1]
+        print(ad)
         allele_ref = int(ad.split(",")[0])
         allele_alt = int(ad.split(",")[1])
         af = allele_alt / (allele_ref + allele_alt) * 100
