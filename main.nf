@@ -558,6 +558,7 @@ if(params.VARIANTS != false) {
             
         output: 
             file("${base}_bcftools_variants.csv")
+            file("*")
         
         publishDir params.OUTDIR, mode: 'copy'
 
