@@ -40,8 +40,10 @@ visualization = open('visualization.csv', 'w')
 correction_number = int(correction_number)
 residue_correction_number = int(residue_correction_number)
 
+visualization.write("Sample,Position,Protein,AAChange,NucleotideChange,AlleleFreq,Depth,Type,MatPeptide,MatPeptideAAChange,MatPeptideNucChange\n")
+
 # Looping through all mutations we found
-with open("final.csv") as f:
+with open("filtered_variants.txt") as f:
     # Adds headers as appropriate to each file
     #header = f.readline()
     #ribosomal_corrected.write(header.rstrip() + ",MatPeptide" + '\n')
@@ -51,14 +53,27 @@ with open("final.csv") as f:
         line = row.rstrip()
         # Finds the nucleotide and amino acid numbers that need to be changed.
         # Formatting is different for deletions because of extra 'del.'
-        nuc = line.split(',')[6]
-        if 'del' in nuc:
+        print(line)
+        type = line.split(',')[-1]
+        nuc = line.split(',')[4]
+        if 'del' in nuc or 'dup' in nuc:
             nuc_num = int(nuc[0:-4])
+        elif type == "frameshift insertion":
+            nuc_num = int(nuc.split("_")[0])
         else:
             nuc_num = int(nuc[1:-1])
-        amino = line.split(',')[4]
-        amino_num = int(amino[1:-1])
-        position = int(line.split(',')[2])
+        
+        amino = line.split(',')[3]
+        # fs
+        if type == "frameshift deletion" or type == "frameshift insertion":
+            amino_num = int(amino[1:-2])
+        elif type == "nonframeshift deletion":
+            amino_num = int(amino.split("_")[0])
+        # elif type == "frameshift insertion":
+        #     amino_num = int(amino.split("dup")[0])
+        else:
+            amino_num = int(amino[1:-1])
+        position = int(line.split(',')[1])
 
         # position = line.split(',')[2]
             # if position < int(start_num_list[index]):

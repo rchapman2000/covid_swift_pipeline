@@ -594,11 +594,11 @@ if(params.VARIANTS != false) {
             # Adds mature peptide differences from protein start.
             python3 !{MAT_PEPTIDE_ADDITION}
             rm mat_peptides.txt
-            # Corrects for ribosomal slippage.
-            python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
-            awk NF final.csv > a.tmp && mv a.tmp final.csv
             python3 !{CORRECT_AF_BCFTOOLS}
-            sort -h -k2 -t, fixed_variants.txt > !{base}_bcftools_variants.csv
+            # Corrects for ribosomal slippage.
+            python3 !{RIBOSOMAL_SLIPPAGE} filtered_variants.csv proteins.csv
+            awk NF final.csv > a.tmp && mv a.tmp final.csv
+            sort -h -k2 -t, visualization.csv > !{base}_bcftools_variants.csv
         else 
             echo "Bam is empty, skipping annotation."
             touch !{base}_bcftools_variants.csv
