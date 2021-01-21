@@ -376,9 +376,9 @@ process Clipping {
         if (( \$bamsize > 92 ))
         then
             # Spike protein coverage
-            awk '\$2 ~ /21463/,\$2 ~ /25284/' ${base}_coverage.txt > ${base}_spike_coverage.txt
+            awk '\$2 ~ /21563/,\$2 ~ /25384/' ${base}_coverage.txt > ${base}_spike_coverage.txt
             avgcoverage=\$(cat ${base}_spike_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
-            proteinlength=\$((25284-21463+1))
+            proteinlength=\$((25384-21563+1))
             cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
             cov200=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=200' | wc -l)/3822))
             mincov=\$(sort -nk 3 ${base}_spike_coverage.txt | head -n 1 | cut -f3)
@@ -434,7 +434,7 @@ process generateConsensus {
     if (( !{bamsize} > 92 ))
     then
         # Parallelize pileup based on number of cores
-        splitnum=$(($((29803/!{task.cpus}))+1))
+        splitnum=$(($((29903/!{task.cpus}))+1))
         perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
         #cat !{SPLITCHR} | \\
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
