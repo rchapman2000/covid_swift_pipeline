@@ -201,23 +201,30 @@ workflow {
     //     CORRECT_AF_BCFTOOLS
     // )
     
-    AnnotateVariants_Lofreq (
-        Lofreq.out[0],
-        MAT_PEPTIDES,
-        MAT_PEPTIDE_ADDITION,
-        RIBOSOMAL_SLIPPAGE,
-        RIBOSOMAL_START,
-        PROTEINS,
-        AT_REFGENE,
-        AT_REFGENE_MRNA,
-        CORRECT_AF
-    )
+    // AnnotateVariants_Lofreq (
+    //     Lofreq.out[0],
+    //     MAT_PEPTIDES,
+    //     MAT_PEPTIDE_ADDITION,
+    //     RIBOSOMAL_SLIPPAGE,
+    //     RIBOSOMAL_START,
+    //     PROTEINS,
+    //     AT_REFGENE,
+    //     AT_REFGENE_MRNA,
+    //     CORRECT_AF
+    // )
 
     Varscan2 ( 
         Clipping.out[2],
         REFERENCE_FASTA,
         REFERENCE_FASTA_FAI,
         SPLITCHR
+    )
+
+    AnnotateVariants (
+        Varscan.out[0].groupTuple(
+            ).join(
+                Lofreq.out[1].groupTuple()
+            )
     )
 
 }
