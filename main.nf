@@ -175,31 +175,31 @@ workflow {
         MASTERFILE
     )
 
-    GenerateConsensus (
-        Clipping.out[0],
-        REFERENCE_FASTA,
-        TRIM_ENDS,
-        FIX_COVERAGE,
-        VCFUTILS,
-        REFERENCE_FASTA_FAI,
-        SPLITCHR
-    )
+    // GenerateConsensus (
+    //     Clipping.out[0],
+    //     REFERENCE_FASTA,
+    //     TRIM_ENDS,
+    //     FIX_COVERAGE,
+    //     VCFUTILS,
+    //     REFERENCE_FASTA_FAI,
+    //     SPLITCHR
+    // )
 
     Lofreq (
         Clipping.out[1],
         REFERENCE_FASTA
     )
-    AnnotateVariants_Bcftools (
-        GenerateConsensus.out[5],
-        MAT_PEPTIDES,
-        MAT_PEPTIDE_ADDITION,
-        RIBOSOMAL_SLIPPAGE,
-        RIBOSOMAL_START,
-        PROTEINS,
-        AT_REFGENE,
-        AT_REFGENE_MRNA,
-        CORRECT_AF_BCFTOOLS
-    )
+    // AnnotateVariants_Bcftools (
+    //     GenerateConsensus.out[5],
+    //     MAT_PEPTIDES,
+    //     MAT_PEPTIDE_ADDITION,
+    //     RIBOSOMAL_SLIPPAGE,
+    //     RIBOSOMAL_START,
+    //     PROTEINS,
+    //     AT_REFGENE,
+    //     AT_REFGENE_MRNA,
+    //     CORRECT_AF_BCFTOOLS
+    // )
     
     AnnotateVariants_Lofreq (
         Lofreq.out[0],
