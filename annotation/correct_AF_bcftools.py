@@ -27,7 +27,10 @@ if __name__ == '__main__':
             allele_ref = int(ad.split(",")[0]) + int(ad.split(",")[1])
             allele_alt = int(ad.split(",")[2]) + int(ad.split(",")[3])
             if (allele_ref + allele_alt) > 0:
-                af = allele_alt / (allele_ref + allele_alt) * 100
+                if("IMF" in line):
+                    af = float(line.split("IMF=")[1].split(";")[0])*100
+                else:
+                    af = allele_alt / (allele_ref + allele_alt) * 100
 
                 if(af >= 1):
                     line_parts = line.split("\t")
