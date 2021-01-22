@@ -58,7 +58,7 @@ with open("filtered_variants.txt") as f:
         nuc = line.split(',')[4]
         if 'del' in nuc or 'dup' in nuc:
             nuc_num = int(nuc[0:-4])
-        elif type == "frameshift insertion":
+        elif type == "frameshift insertion" or "ins" in nuc:
             nuc_num = int(nuc.split("_")[0])
         else:
             nuc_num = int(nuc[1:-1])
@@ -67,8 +67,8 @@ with open("filtered_variants.txt") as f:
         # fs
         if type == "frameshift deletion" or type == "frameshift insertion":
             amino_num = int(amino[1:-2])
-        elif type == "nonframeshift deletion":
-            amino_num = int(amino.split("_")[0])
+        elif type == "nonframeshift deletion" or "delins" in amino:
+            amino_num = int(amino.split("_")[0][1:])
         # elif type == "frameshift insertion":
         #     amino_num = int(amino.split("dup")[0])
         else:
