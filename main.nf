@@ -487,7 +487,7 @@ process generateConsensus {
        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
        percent_n=100
        touch \${R1}_bcftools.vcf
-       touch \${R1}.clipped.cleaned.bam
+       touch \${R1}_pre_bcftools.vcf
     fi
     
     cp \${R1}_summary3.csv \${R1}_summary.csv
