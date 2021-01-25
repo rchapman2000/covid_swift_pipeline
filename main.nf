@@ -463,10 +463,10 @@ process generateConsensus {
             | awk '\$4 < 6' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
         awk '{ if(\$3 > 200 && \$2 < 29742) {print}}' \${R1}.mask.bed > a.tmp && mv a.tmp \${R1}.mask.bed
         /usr/local/miniconda/bin/bedtools maskfasta \\
-            -fi \${R1}.consensus.fa \\
+            -fi !{REFERENCE_FASTA} \\
             -bed \${R1}.mask.bed \\
-            -fo \${R1}.consensus.masked.fa
-        cat !{REFERENCE_FASTA} \${R1}.consensus.masked.fa > align_input.fasta
+            -fo ref.mask.fasta
+        cat ref.mask.fasta \${R1}.consensus.fa > align_input.fasta
         /usr/local/miniconda/bin/mafft --auto --thread !{task.cpus} align_input.fasta > repositioned.fasta
         awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
         
