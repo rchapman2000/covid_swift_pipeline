@@ -507,39 +507,39 @@ process generateConsensus {
     '''
 }
 
-process lofreq {
-    container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
-
-	// Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
-
-    input:
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
-      file REFERENCE_FASTA
-    output:
-      file("${base}_lofreq.vcf")
-      tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
-    
-    publishDir params.OUTDIR, mode: 'copy'
-
-    script:
-    """
-    #!/bin/bash
-
-    echo ${bamsize}
-    if (( ${bamsize} > 92))
-    then
-        lofreq faidx ${REFERENCE_FASTA}
-        /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
-    else
-        touch ${base}_lofreq.vcf
-    fi
-
-    """
-}
-
 if(params.VARIANTS != false) { 
+    process lofreq {
+        container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
+
+        // Retry on fail at most three times 
+        errorStrategy 'retry'
+        maxRetries 3
+
+        input:
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
+        file REFERENCE_FASTA
+        output:
+        file("${base}_lofreq.vcf")
+        tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
+        
+        publishDir params.OUTDIR, mode: 'copy'
+
+        script:
+        """
+        #!/bin/bash
+
+        echo ${bamsize}
+        if (( ${bamsize} > 92))
+        then
+            lofreq faidx ${REFERENCE_FASTA}
+            /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
+        else
+            touch ${base}_lofreq.vcf
+        fi
+
+        """
+    }
+
     process annotateVariants {
         errorStrategy 'retry'
         maxRetries 3
