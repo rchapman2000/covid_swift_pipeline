@@ -67,10 +67,11 @@ with open("filtered_variants.txt") as f:
         # fs
         if type == "frameshift deletion" or type == "frameshift insertion":
             amino_num = int(amino[1:-2])
+        elif "delins" in amino:
+            amino_num = int(amino.split("delins")[0][1:])
         elif type == "nonframeshift deletion":
             amino_num = int(amino.split("_")[0][1:])
-        elif "delins" in amino:
-            amino_num = int(amino.split("delins")[0])
+        
         # elif type == "frameshift insertion":
         #     amino_num = int(amino.split("dup")[0])
         else:
