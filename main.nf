@@ -395,8 +395,8 @@ process Clipping {
     
 }
 
-process generateConsensus {
-    container "quay.io/greninger-lab/swift-pipeline:latest"
+process Gatk {
+    container "quay.io/biocontainers/gatk4:4.1.9.0--py39_0"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
@@ -411,12 +411,13 @@ process generateConsensus {
         file REFERENCE_FASTA_FAI
         file SPLITCHR
     output:
-        file("${base}_swift.fasta")
-        file("${base}_bcftools.vcf")
-        file(INDEX_FILE)
-        file("${base}_summary.csv")
+
+        //file("${base}_swift.fasta")
+        file("${base}_gatk.vcf")
+        //file(INDEX_FILE)
+        //file("${base}_summary.csv")
         // file("${base}.clipped.cleaned.bam")
-        tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
+        //tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -433,293 +434,395 @@ process generateConsensus {
     # More reliable way of checking bam size, because of aliases
     if (( !{bamsize} > 92 ))
     then
-        # Parallelize pileup based on number of cores
-        splitnum=$(($((29903/!{task.cpus}))+1))
-        perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
-        #cat !{SPLITCHR} | \\
-            xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-                "/usr/local/miniconda/bin/bcftools mpileup \\
-                    -f !{REFERENCE_FASTA} -r {} \\
-                    --count-orphans \\
-                    --max-depth 50000 \\
-                    --max-idepth 500000 \\
-                    --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
-                !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -A -m -Oz - > tmp.{}.vcf.gz"
-        
-        cat *.vcf.gz > \${R1}_catted.vcf.gz
-        /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
-        gunzip \${R1}_catted.vcf.gz
-        cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre_bcftools.vcf
-        
-        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre_bcftools.vcf -o \${R1}_pre2.vcf
-        /usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
-        /usr/local/miniconda/bin/bgzip \${R1}.vcf
-        /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
-        cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
-        /usr/local/miniconda/bin/bedtools genomecov \\
-            -bga \\
-            -ibam !{BAMFILE} \\
-            -g !{REFERENCE_FASTA} \\
-            | awk '\$4 < 6' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
-        awk '{ if(\$3 > 200 && \$2 < 29742) {print}}' \${R1}.mask.bed > a.tmp && mv a.tmp \${R1}.mask.bed
-        /usr/local/miniconda/bin/bedtools maskfasta \\
-            -fi !{REFERENCE_FASTA} \\
-            -bed \${R1}.mask.bed \\
-            -fo ref.mask.fasta
-        cat ref.mask.fasta \${R1}.consensus.fa > align_input.fasta
-        /usr/local/miniconda/bin/mafft --auto --thread !{task.cpus} align_input.fasta > repositioned.fasta
-        awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
-        
-        python3 !{TRIM_ENDS} \${R1}
-        # Find percent ns, doesn't work, fix later in python script
-        num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
-        num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
-        percent_n=$(awk -v num_ns=$num_ns -v num_bases=$num_bases 'BEGIN { print ( num_ns * 100 / num_bases ) }')
-        echo "num_bases=$num_bases"
-        echo "num_ns=$num_ns"
-        echo "percent_n=$percent_n"
-        gunzip \${R1}.vcf.gz
-        mv \${R1}.vcf \${R1}_bcftools.vcf
-        #/usr/local/miniconda/bin/samtools view !{BAMFILE} -@ !{task.cpus} | awk -F: '$12 < 600' > \${R1}'.clipped.cleaned.bam'
+        gatk HaplotypeCaller \\
+            --sample-ploidy 2 \\
+            --dont-use-soft-clipped-bases true \\
+            --output \${R1}_gatk.vcf \\
+            --input !{BAMFILE} \\
+            --reference !{REFERENCE_FASTA} \\
+            --annotate-with-num-discovered-alleles false \\
+            --heterozygosity 0.001 \\
+            --indel-heterozygosity 1.25E-4 --heterozygosity-stdev 0.01 \\
+            --standard-min-confidence-threshold-for-calling 30.0 \\
+            --max-alternate-alleles 6 \\
+            --max-genotype-count 1024 \\
+            --num-reference-samples-if-no-call 0 \\
+            --contamination-fraction-to-filter 0.0 \\
+            --output-mode EMIT_VARIANTS_ONLY \\
+            --all-site-pls false \\
+            --gvcf-gq-bands 1 --gvcf-gq-bands 2 --gvcf-gq-bands 3 --gvcf-gq-bands 4 --gvcf-gq-bands 5 --gvcf-gq-bands 6 --gvcf-gq-bands 7 --gvcf-gq-bands 8 --gvcf-gq-bands 9 --gvcf-gq-bands 10 \\
+            --gvcf-gq-bands 11 --gvcf-gq-bands 12 --gvcf-gq-bands 13 --gvcf-gq-bands 14 --gvcf-gq-bands 15 --gvcf-gq-bands 16 --gvcf-gq-bands 17 --gvcf-gq-bands 18 --gvcf-gq-bands 19 --gvcf-gq-bands 20 \\
+            --gvcf-gq-bands 21 --gvcf-gq-bands 22 --gvcf-gq-bands 23 --gvcf-gq-bands 24 --gvcf-gq-bands 25 --gvcf-gq-bands 26 --gvcf-gq-bands 27 --gvcf-gq-bands 28 --gvcf-gq-bands 29 --gvcf-gq-bands 30 \\
+            --gvcf-gq-bands 31 --gvcf-gq-bands 32 --gvcf-gq-bands 33 --gvcf-gq-bands 34 --gvcf-gq-bands 35 --gvcf-gq-bands 36 --gvcf-gq-bands 37 --gvcf-gq-bands 38 --gvcf-gq-bands 39 --gvcf-gq-bands 40 \\
+            --gvcf-gq-bands 41 --gvcf-gq-bands 42 --gvcf-gq-bands 43 --gvcf-gq-bands 44 --gvcf-gq-bands 45 --gvcf-gq-bands 46 --gvcf-gq-bands 47 --gvcf-gq-bands 48 --gvcf-gq-bands 49 --gvcf-gq-bands 50 \\
+            --gvcf-gq-bands 51 --gvcf-gq-bands 52 --gvcf-gq-bands 53 --gvcf-gq-bands 54 --gvcf-gq-bands 55 --gvcf-gq-bands 56 --gvcf-gq-bands 57 --gvcf-gq-bands 58 --gvcf-gq-bands 59 --gvcf-gq-bands 60 \\
+            --gvcf-gq-bands 70 --gvcf-gq-bands 80 --gvcf-gq-bands 90 --gvcf-gq-bands 99 \\
+            --floor-blocks false --indel-size-to-eliminate-in-ref-model 10 --disable-optimizations false --just-determine-active-regions false \\
+            --dont-genotype false --do-not-run-physical-phasing false --do-not-correct-overlapping-quality false --use-filtered-reads-for-annotations false \\
+            --adaptive-pruning false --do-not-recover-dangling-branches false --recover-dangling-heads false \\
+            --kmer-size 10 --kmer-size 25 --dont-increase-kmer-sizes-for-cycles false --allow-non-unique-kmers-in-ref false \\
+            --num-pruning-samples 1 \\
+            --min-dangling-branch-length 4 --recover-all-dangling-branches false \\
+            --max-num-haplotypes-in-population 128 \\
+            --min-pruning 2 --adaptive-pruning-initial-error-rate 0.001 --pruning-lod-threshold 2.302585092994046 --max-unpruned-variants 100 \\
+            --linked-de-bruijn-graph false --disable-artificial-haplotype-recovery false \\
+            --debug-assembly false --debug-graph-transformations false --capture-assembly-failure-bam false \\
+            --error-correction-log-odds -Infinity --error-correct-reads false \\
+            --kmer-length-for-read-error-correction 25 --min-observations-for-kmer-to-be-solid 20 \\
+            --base-quality-score-threshold 18 \\
+            --pair-hmm-gap-continuation-penalty 10 --pair-hmm-implementation FASTEST_AVAILABLE \\
+            --pcr-indel-model CONSERVATIVE \\
+            --phred-scaled-global-read-mismapping-rate 45 \\
+            --native-pair-hmm-threads !{task.cpus} --native-pair-hmm-use-double-precision false \\
+            --bam-writer-type CALLED_HAPLOTYPES \\
+            --min-base-quality-score 10 \\
+            --smith-waterman JAVA --emit-ref-confidence NONE --max-mnp-distance 0 \\
+            --force-call-filtered-alleles false --allele-informative-reads-overlap-margin 2 \\
+            --min-assembly-region-size 50 --max-assembly-region-size 300 \\
+            --active-probability-threshold 0.002 --max-prob-propagation-distance 50 \\
+            --force-active false \\
+            --assembly-region-padding 100 --padding-around-indels 75 --padding-around-snps 20 --padding-around-strs 75 \\
+            --max-reads-per-alignment-start 50 \\
+            --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL \\
+            --read-validation-stringency SILENT \\
+            --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false \\
+            --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false \\
+            --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false \\
+            --sites-only-vcf-output false \\
+            --help false --version false --showHidden false --verbosity INFO --QUIET false \\
+            --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays --disable-tool-default-read-filters false \\
+            --minimum-mapping-quality 20 --disable-tool-default-annotations false --enable-all-annotations false --allow-old-rms-mapping-quality-annotation-data false
     else
-       echo "Empty bam detected. Generating empty consensus fasta file..."
-       printf '>!{base}\n' > \${R1}_swift.fasta
-       printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
-       percent_n=100
-       touch \${R1}_bcftools.vcf
-       touch \${R1}_pre_bcftools.vcf
+        touch \${R1}_gatk.vcf
     fi
-    
-    cp \${R1}_summary3.csv \${R1}_summary.csv
-    printf ",\$percent_n" >> \${R1}_summary.csv
-
-    cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
-    mv a.tmp \${R1}_summary.csv
-
-    if [[ !{bamsize} > 92 ]]
-    then
-        python3 !{FIX_COVERAGE} \${R1}
-        mv \${R1}_summary_fixed.csv \${R1}_summary.csv
-    fi
-
-    [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
-
     '''
 }
 
-if(params.VARIANTS != false) { 
-    process lofreq {
-        container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
+// process generateConsensus {
+//     container "quay.io/greninger-lab/swift-pipeline:latest"
 
-        // Retry on fail at most three times 
-        errorStrategy 'retry'
-        maxRetries 3
+// 	// Retry on fail at most three times 
+//     errorStrategy 'retry'
+//     maxRetries 3
 
-        input:
-        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
-        file REFERENCE_FASTA
-        output:
-        file("${base}_lofreq.vcf")
-        tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
+//     input:
+//         tuple val (base), file(BAMFILE),file(INDEX_FILE),file("${base}_summary3.csv"),val(bamsize) from Clipped_bam_ch
+//         file REFERENCE_FASTA
+//         file TRIM_ENDS
+//         file FIX_COVERAGE
+//         file VCFUTILS
+//         file REFERENCE_FASTA_FAI
+//         file SPLITCHR
+//     output:
+//         file("${base}_swift.fasta")
+//         file("${base}_bcftools.vcf")
+//         file(INDEX_FILE)
+//         file("${base}_summary.csv")
+//         // file("${base}.clipped.cleaned.bam")
+//         tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
+
+//     publishDir params.OUTDIR, mode: 'copy'
+
+//     shell:
+//     '''
+//     #!/bin/bash
+//     ls -latr
+
+//     R1=`basename !{BAMFILE} .clipped.bam`
+
+//     echo "bamsize: !{bamsize}"
+
+//     #if [ -s !{BAMFILE} ]
+//     # More reliable way of checking bam size, because of aliases
+//     if (( !{bamsize} > 92 ))
+//     then
+//         # Parallelize pileup based on number of cores
+//         splitnum=$(($((29903/!{task.cpus}))+1))
+//         perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
+//         #cat !{SPLITCHR} | \\
+//             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
+//                 "/usr/local/miniconda/bin/bcftools mpileup \\
+//                     -f !{REFERENCE_FASTA} -r {} \\
+//                     --count-orphans \\
+//                     --max-depth 50000 \\
+//                     --max-idepth 500000 \\
+//                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
+//                 !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -A -m -Oz - > tmp.{}.vcf.gz"
         
-        publishDir params.OUTDIR, mode: 'copy'
+//         cat *.vcf.gz > \${R1}_catted.vcf.gz
+//         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
+//         gunzip \${R1}_catted.vcf.gz
+//         cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre_bcftools.vcf
+        
+//         /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre_bcftools.vcf -o \${R1}_pre2.vcf
+//         /usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
+//         /usr/local/miniconda/bin/bgzip \${R1}.vcf
+//         /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
+//         cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
+//         /usr/local/miniconda/bin/bedtools genomecov \\
+//             -bga \\
+//             -ibam !{BAMFILE} \\
+//             -g !{REFERENCE_FASTA} \\
+//             | awk '\$4 < 6' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
+//         awk '{ if(\$3 > 200 && \$2 < 29742) {print}}' \${R1}.mask.bed > a.tmp && mv a.tmp \${R1}.mask.bed
+//         /usr/local/miniconda/bin/bedtools maskfasta \\
+//             -fi !{REFERENCE_FASTA} \\
+//             -bed \${R1}.mask.bed \\
+//             -fo ref.mask.fasta
+//         cat ref.mask.fasta \${R1}.consensus.fa > align_input.fasta
+//         /usr/local/miniconda/bin/mafft --auto --thread !{task.cpus} align_input.fasta > repositioned.fasta
+//         awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
+        
+//         python3 !{TRIM_ENDS} \${R1}
+//         # Find percent ns, doesn't work, fix later in python script
+//         num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
+//         num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
+//         percent_n=$(awk -v num_ns=$num_ns -v num_bases=$num_bases 'BEGIN { print ( num_ns * 100 / num_bases ) }')
+//         echo "num_bases=$num_bases"
+//         echo "num_ns=$num_ns"
+//         echo "percent_n=$percent_n"
+//         gunzip \${R1}.vcf.gz
+//         mv \${R1}.vcf \${R1}_bcftools.vcf
+//         #/usr/local/miniconda/bin/samtools view !{BAMFILE} -@ !{task.cpus} | awk -F: '$12 < 600' > \${R1}'.clipped.cleaned.bam'
+//     else
+//        echo "Empty bam detected. Generating empty consensus fasta file..."
+//        printf '>!{base}\n' > \${R1}_swift.fasta
+//        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
+//        percent_n=100
+//        touch \${R1}_bcftools.vcf
+//        touch \${R1}_pre_bcftools.vcf
+//     fi
+    
+//     cp \${R1}_summary3.csv \${R1}_summary.csv
+//     printf ",\$percent_n" >> \${R1}_summary.csv
 
-        script:
-        """
-        #!/bin/bash
+//     cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
+//     mv a.tmp \${R1}_summary.csv
 
-        echo ${bamsize}
-        if (( ${bamsize} > 92))
-        then
-            lofreq faidx ${REFERENCE_FASTA}
-            /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
-        else
-            touch ${base}_lofreq.vcf
-        fi
+//     if [[ !{bamsize} > 92 ]]
+//     then
+//         python3 !{FIX_COVERAGE} \${R1}
+//         mv \${R1}_summary_fixed.csv \${R1}_summary.csv
+//     fi
 
-        """
-    }
+//     [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
 
-    process annotateVariants {
-        errorStrategy 'retry'
-        maxRetries 3
+//     '''
+// }
 
-        container "quay.io/vpeddu/lava_image:latest"
+// if(params.VARIANTS != false) { 
+//     process lofreq {
+//         container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
 
-        input:
-            tuple val(base),val(bamsize),file("${base}_pre_bcftools.vcf") from Vcf_ch
-            file MAT_PEPTIDES
-            file MAT_PEPTIDE_ADDITION
-            file RIBOSOMAL_SLIPPAGE
-            file RIBOSOMAL_START
-            file PROTEINS
-            file AT_REFGENE
-            file AT_REFGENE_MRNA
-            file CORRECT_AF_BCFTOOLS
+//         // Retry on fail at most three times 
+//         errorStrategy 'retry'
+//         maxRetries 3
+
+//         input:
+//         tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
+//         file REFERENCE_FASTA
+//         output:
+//         file("${base}_lofreq.vcf")
+//         tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
+        
+//         publishDir params.OUTDIR, mode: 'copy'
+
+//         script:
+//         """
+//         #!/bin/bash
+
+//         echo ${bamsize}
+//         if (( ${bamsize} > 92))
+//         then
+//             lofreq faidx ${REFERENCE_FASTA}
+//             /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
+//         else
+//             touch ${base}_lofreq.vcf
+//         fi
+
+//         """
+//     }
+
+//     process annotateVariants {
+//         errorStrategy 'retry'
+//         maxRetries 3
+
+//         container "quay.io/vpeddu/lava_image:latest"
+
+//         input:
+//             tuple val(base),val(bamsize),file("${base}_pre_bcftools.vcf") from Vcf_ch
+//             file MAT_PEPTIDES
+//             file MAT_PEPTIDE_ADDITION
+//             file RIBOSOMAL_SLIPPAGE
+//             file RIBOSOMAL_START
+//             file PROTEINS
+//             file AT_REFGENE
+//             file AT_REFGENE_MRNA
+//             file CORRECT_AF_BCFTOOLS
             
-        output: 
-            file("${base}_bcftools_variants.csv")
-            file("*")
+//         output: 
+//             file("${base}_bcftools_variants.csv")
+//             file("*")
         
-        publishDir params.OUTDIR, mode: 'copy', pattern:'*_bcftools_variants.csv'
+//         publishDir params.OUTDIR, mode: 'copy', pattern:'*_bcftools_variants.csv'
 
-        shell:
-        '''
-        #!/bin/bash
-        ls -latr
+//         shell:
+//         '''
+//         #!/bin/bash
+//         ls -latr
         
-        if (( !{bamsize} > 92))
-        then
-            # Fixes ploidy issues.
-            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_pre_bcftools.vcf > !{base}_p.vcf
+//         if (( !{bamsize} > 92))
+//         then
+//             # Fixes ploidy issues.
+//             #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
+//             awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_pre_bcftools.vcf > !{base}_p.vcf
 
-            # Converts VCF to .avinput for Annovar.
-            file="!{base}""_p.vcf"
-            #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-            convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-            annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
+//             # Converts VCF to .avinput for Annovar.
+//             file="!{base}""_p.vcf"
+//             #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+//             convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+//             annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
 
-            #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
-            cp !{base}.exonic_variant_function variants.txt
-            #grep "SNV" !{base}.txt > a.tmp
-            #grep "stop" !{base}.txt >> a.tmp
-            #mv a.tmp variants.txt
+//             #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
+//             cp !{base}.exonic_variant_function variants.txt
+//             #grep "SNV" !{base}.txt > a.tmp
+//             #grep "stop" !{base}.txt >> a.tmp
+//             #mv a.tmp variants.txt
         
-            awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
+//             awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
 
-            grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
-            grep -v "delins" !{base}.csv > final.csv
-            # Sorts by beginning of mat peptide
-            sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
-            # Adds mature peptide differences from protein start.
-            python3 !{MAT_PEPTIDE_ADDITION}
-            rm mat_peptides.txt
-            python3 !{CORRECT_AF_BCFTOOLS} -name !{base}
-            # Corrects for ribosomal slippage.
-            python3 !{RIBOSOMAL_SLIPPAGE} filtered_variants.csv proteins.csv
-            awk NF final.csv > a.tmp && mv a.tmp final.csv
-            sort -h -k2 -t, visualization.csv > !{base}_bcftools_variants.csv
+//             grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
+//             grep -v "delins" !{base}.csv > final.csv
+//             # Sorts by beginning of mat peptide
+//             sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
+//             # Adds mature peptide differences from protein start.
+//             python3 !{MAT_PEPTIDE_ADDITION}
+//             rm mat_peptides.txt
+//             python3 !{CORRECT_AF_BCFTOOLS} -name !{base}
+//             # Corrects for ribosomal slippage.
+//             python3 !{RIBOSOMAL_SLIPPAGE} filtered_variants.csv proteins.csv
+//             awk NF final.csv > a.tmp && mv a.tmp final.csv
+//             sort -h -k2 -t, visualization.csv > !{base}_bcftools_variants.csv
 
-        else 
-            echo "Bam is empty, skipping annotation."
-            touch !{base}_bcftools_variants.csv
-        fi
+//         else 
+//             echo "Bam is empty, skipping annotation."
+//             touch !{base}_bcftools_variants.csv
+//         fi
 
-        '''
-    }
+//         '''
+//     }
 
-    // process annotateVariants_Lofreq {
-    //     errorStrategy 'retry'
-    //     maxRetries 3
+//     // process annotateVariants_Lofreq {
+//     //     errorStrategy 'retry'
+//     //     maxRetries 3
 
-    //     container "quay.io/vpeddu/lava_image:latest"
+//     //     container "quay.io/vpeddu/lava_image:latest"
 
-    //     input:
-    //         tuple val(base),val(bamsize),file("${base}_lofreq.vcf") from Vcf_ch2
-    //         file MAT_PEPTIDES
-    //         file MAT_PEPTIDE_ADDITION
-    //         file RIBOSOMAL_SLIPPAGE
-    //         file RIBOSOMAL_START
-    //         file PROTEINS
-    //         file AT_REFGENE
-    //         file AT_REFGENE_MRNA
-    //         file CORRECT_AF
+//     //     input:
+//     //         tuple val(base),val(bamsize),file("${base}_lofreq.vcf") from Vcf_ch2
+//     //         file MAT_PEPTIDES
+//     //         file MAT_PEPTIDE_ADDITION
+//     //         file RIBOSOMAL_SLIPPAGE
+//     //         file RIBOSOMAL_START
+//     //         file PROTEINS
+//     //         file AT_REFGENE
+//     //         file AT_REFGENE_MRNA
+//     //         file CORRECT_AF
             
-    //     output: 
-    //         file("${base}_lofreq_variants.csv")
+//     //     output: 
+//     //         file("${base}_lofreq_variants.csv")
         
-    //     publishDir params.OUTDIR, mode: 'copy'
+//     //     publishDir params.OUTDIR, mode: 'copy'
 
-    //     shell:
-    //     '''
-    //     #!/bin/bash
-    //     ls -latr
+//     //     shell:
+//     //     '''
+//     //     #!/bin/bash
+//     //     ls -latr
         
-    //     if (( !{bamsize} > 92))
-    //     then
-    //         # Fixes ploidy issues.
-    //         #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-    //         #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
-    //         cp !{base}_lofreq.vcf !{base}_p.vcf
+//     //     if (( !{bamsize} > 92))
+//     //     then
+//     //         # Fixes ploidy issues.
+//     //         #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
+//     //         #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
+//     //         cp !{base}_lofreq.vcf !{base}_p.vcf
 
-    //         # Converts VCF to .avinput for Annovar.
-    //         file="!{base}""_p.vcf"
-    //         #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-    //         convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-    //         annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
+//     //         # Converts VCF to .avinput for Annovar.
+//     //         file="!{base}""_p.vcf"
+//     //         #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+//     //         convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+//     //         annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
 
-    //         #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
-    //         cp !{base}.exonic_variant_function !{base}.txt
-    //         grep "SNV" !{base}.txt > a.tmp
-    //         grep "stop" !{base}.txt >> a.tmp
-    //         mv a.tmp variants.txt
+//     //         #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
+//     //         cp !{base}.exonic_variant_function !{base}.txt
+//     //         grep "SNV" !{base}.txt > a.tmp
+//     //         grep "stop" !{base}.txt >> a.tmp
+//     //         mv a.tmp variants.txt
         
-    //         awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
+//     //         awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
 
-    //         grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
-    //         grep -v "delins" !{base}.csv > final.csv
-    //         # Sorts by beginning of mat peptide
-    //         sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
-    //         # Adds mature peptide differences from protein start.
-    //         python3 !{MAT_PEPTIDE_ADDITION}
-    //         rm mat_peptides.txt
-    //         # Corrects for ribosomal slippage.
-    //         python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
-    //         awk NF final.csv > a.tmp && mv a.tmp final.csv
-    //         python3 !{CORRECT_AF}
-    //         sort -h -k2 -t, fixed_variants.txt > !{base}_lofreq_variants.csv
-    //     else 
-    //         echo "Bam is empty, skipping annotation."
-    //         touch !{base}_lofreq_variants.csv
-    //     fi
+//     //         grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
+//     //         grep -v "delins" !{base}.csv > final.csv
+//     //         # Sorts by beginning of mat peptide
+//     //         sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
+//     //         # Adds mature peptide differences from protein start.
+//     //         python3 !{MAT_PEPTIDE_ADDITION}
+//     //         rm mat_peptides.txt
+//     //         # Corrects for ribosomal slippage.
+//     //         python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
+//     //         awk NF final.csv > a.tmp && mv a.tmp final.csv
+//     //         python3 !{CORRECT_AF}
+//     //         sort -h -k2 -t, fixed_variants.txt > !{base}_lofreq_variants.csv
+//     //     else 
+//     //         echo "Bam is empty, skipping annotation."
+//     //         touch !{base}_lofreq_variants.csv
+//     //     fi
 
-    //     '''
-    // }
+//     //     '''
+//     // }
 
-    process varscan2 { 
-        container "quay.io/vpeddu/lava_image:latest"
+//     process varscan2 { 
+//         container "quay.io/vpeddu/lava_image:latest"
 
-        // Retry on fail at most three times 
-        errorStrategy 'retry'
-        maxRetries 3
+//         // Retry on fail at most three times 
+//         errorStrategy 'retry'
+//         maxRetries 3
 
-        input:
-            tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) from Clipped_bam_ch3
-            file REFERENCE_FASTA
-            file REFERENCE_FASTA_FAI
-            file SPLITCHR
-        output:
-            tuple val(base),val(bamsize),file("${base}_varscan.vcf") into Varscan_ch
+//         input:
+//             tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) from Clipped_bam_ch3
+//             file REFERENCE_FASTA
+//             file REFERENCE_FASTA_FAI
+//             file SPLITCHR
+//         output:
+//             tuple val(base),val(bamsize),file("${base}_varscan.vcf") into Varscan_ch
 
-        publishDir params.OUTDIR, mode: 'copy'
+//         publishDir params.OUTDIR, mode: 'copy'
 
-        shell:
-        '''
-        #!/bin/bash
-        ls -latr
-        R1=`basename !{BAMFILE} .clipped.bam`
-        echo "bamsize: !{bamsize}"
-        #if [ -s !{BAMFILE} ]
-        # More reliable way of checking bam size, because of aliases
-        if (( !{bamsize} > 92 ))
-        then
-            # Parallelize pileup based on number of cores
-            splitnum=$(($((29903/!{task.cpus}))+1))
-            cat !{SPLITCHR} | \\
-                xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-                    "/usr/local/miniconda/bin/samtools mpileup \\
-                        -f !{REFERENCE_FASTA} -r {} \\
-                        -B \\
-                        --max-depth 50000 \\
-                        --max-idepth 500000 \\
-                    !{BAMFILE} | 
-                    java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
+//         shell:
+//         '''
+//         #!/bin/bash
+//         ls -latr
+//         R1=`basename !{BAMFILE} .clipped.bam`
+//         echo "bamsize: !{bamsize}"
+//         #if [ -s !{BAMFILE} ]
+//         # More reliable way of checking bam size, because of aliases
+//         if (( !{bamsize} > 92 ))
+//         then
+//             # Parallelize pileup based on number of cores
+//             splitnum=$(($((29903/!{task.cpus}))+1))
+//             cat !{SPLITCHR} | \\
+//                 xargs -I {} -n 1 -P !{task.cpus} sh -c \\
+//                     "/usr/local/miniconda/bin/samtools mpileup \\
+//                         -f !{REFERENCE_FASTA} -r {} \\
+//                         -B \\
+//                         --max-depth 50000 \\
+//                         --max-idepth 500000 \\
+//                     !{BAMFILE} | 
+//                     java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
             
-            cat *.vcf > \${R1}_varscan.vcf
-        else
-        touch \${R1}_varscan.vcf
-        fi
-        '''
-}
-}
+//             cat *.vcf > \${R1}_varscan.vcf
+//         else
+//         touch \${R1}_varscan.vcf
+//         fi
+//         '''
+// }
+// }
