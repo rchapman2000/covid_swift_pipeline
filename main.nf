@@ -450,7 +450,7 @@ process Gatk {
             --num-reference-samples-if-no-call 0 \\
             --contamination-fraction-to-filter 0.0 \\
             --output-mode EMIT_VARIANTS_ONLY \\
-            --all-site-pls false 
+            --all-site-pls false \\
             --native-pair-hmm-threads !{task.cpus} --native-pair-hmm-use-double-precision false \\
             --gvcf-gq-bands 1 --gvcf-gq-bands 2 --gvcf-gq-bands 3 --gvcf-gq-bands 4 --gvcf-gq-bands 5 --gvcf-gq-bands 6 --gvcf-gq-bands 7 --gvcf-gq-bands 8 --gvcf-gq-bands 9 --gvcf-gq-bands 10 \\
             --gvcf-gq-bands 11 --gvcf-gq-bands 12 --gvcf-gq-bands 13 --gvcf-gq-bands 14 --gvcf-gq-bands 15 --gvcf-gq-bands 16 --gvcf-gq-bands 17 --gvcf-gq-bands 18 --gvcf-gq-bands 19 --gvcf-gq-bands 20 \\
@@ -466,33 +466,33 @@ process Gatk {
             --num-pruning-samples 1 \\
             --min-dangling-branch-length 4 --recover-all-dangling-branches false \\
             --max-num-haplotypes-in-population 128 \\
-            #--min-pruning 2 --adaptive-pruning-initial-error-rate 0.001 --pruning-lod-threshold 2.302585092994046 --max-unpruned-variants 100 \\
-            #--linked-de-bruijn-graph false --disable-artificial-haplotype-recovery false \\
-            #--debug-assembly false --debug-graph-transformations false --capture-assembly-failure-bam false \\
-            #--error-correction-log-odds -Infinity --error-correct-reads false \\
-            #--kmer-length-for-read-error-correction 25 --min-observations-for-kmer-to-be-solid 20 \\
-            #--base-quality-score-threshold 18 \\
-            #--pair-hmm-gap-continuation-penalty 10 --pair-hmm-implementation FASTEST_AVAILABLE \\
-            #--pcr-indel-model CONSERVATIVE \\
-            #--phred-scaled-global-read-mismapping-rate 45 \\
-            #--bam-writer-type CALLED_HAPLOTYPES \\
-            #--min-base-quality-score 10 \\
-            #--smith-waterman JAVA --emit-ref-confidence NONE --max-mnp-distance 0 \\
-            #--force-call-filtered-alleles false --allele-informative-reads-overlap-margin 2 \\
-            #--min-assembly-region-size 50 --max-assembly-region-size 300 \\
-            #--active-probability-threshold 0.002 --max-prob-propagation-distance 50 \\
-            #--force-active false \\
-            #--assembly-region-padding 100 --padding-around-indels 75 --padding-around-snps 20 --padding-around-strs 75 \\
-            #--max-reads-per-alignment-start 50 \\
-            #--interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL \\
-            #--read-validation-stringency SILENT \\
-            #--seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false \\
-            #--create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false \\
-            #--lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false \\
-            #--sites-only-vcf-output false \\
+            --min-pruning 2 --adaptive-pruning-initial-error-rate 0.001 --pruning-lod-threshold 2.302585092994046 --max-unpruned-variants 100 \\
+            --linked-de-bruijn-graph false --disable-artificial-haplotype-recovery false \\
+            --debug-assembly false --debug-graph-transformations false --capture-assembly-failure-bam false \\
+            --error-correction-log-odds -Infinity --error-correct-reads false \\
+            --kmer-length-for-read-error-correction 25 --min-observations-for-kmer-to-be-solid 20 \\
+            --base-quality-score-threshold 18 \\
+            --pair-hmm-gap-continuation-penalty 10 --pair-hmm-implementation FASTEST_AVAILABLE \\
+            --pcr-indel-model CONSERVATIVE \\
+            --phred-scaled-global-read-mismapping-rate 45 \\
+            --bam-writer-type CALLED_HAPLOTYPES \\
+            --min-base-quality-score 10 \\
+            --smith-waterman JAVA --emit-ref-confidence NONE --max-mnp-distance 0 \\
+            --force-call-filtered-alleles false --allele-informative-reads-overlap-margin 2 \\
+            --min-assembly-region-size 50 --max-assembly-region-size 300 \\
+            --active-probability-threshold 0.002 --max-prob-propagation-distance 50 \\
+            --force-active false \\
+            --assembly-region-padding 100 --padding-around-indels 75 --padding-around-snps 20 --padding-around-strs 75 \\
+            --max-reads-per-alignment-start 50 \\
+            --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL \\
+            --read-validation-stringency SILENT \\
+            --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false \\
+            --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false \\
+            --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false \\
+            --sites-only-vcf-output false \\
             #--help false --version false --showHidden false --verbosity INFO --QUIET false \\
-            #--use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays --disable-tool-default-read-filters false \\
-            #--minimum-mapping-quality 20 --disable-tool-default-annotations false --enable-all-annotations false --allow-old-rms-mapping-quality-annotation-data false
+            --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays --disable-tool-default-read-filters false \\
+            --minimum-mapping-quality 20 --disable-tool-default-annotations false --enable-all-annotations false --allow-old-rms-mapping-quality-annotation-data false
     else
         touch \${R1}_gatk.vcf
     fi
