@@ -414,6 +414,7 @@ process Gatk {
 
         //file("${base}_swift.fasta")
         file("${base}_gatk.vcf")
+        file("*")
         //file(INDEX_FILE)
         //file("${base}_summary.csv")
         // file("${base}.clipped.cleaned.bam")
@@ -434,6 +435,7 @@ process Gatk {
     # More reliable way of checking bam size, because of aliases
     if (( !{bamsize} > 92 ))
     then
+        gatk CreateSequenceDictionary -R !{REFERENCE_FASTA}
         gatk HaplotypeCaller \\
             --sample-ploidy 2 \\
             --dont-use-soft-clipped-bases true \\
@@ -443,13 +445,13 @@ process Gatk {
             --annotate-with-num-discovered-alleles false \\
             --heterozygosity 0.001 \\
             --indel-heterozygosity 1.25E-4 --heterozygosity-stdev 0.01 \\
-            #--standard-min-confidence-threshold-for-calling 30.0 \\
-            #--max-alternate-alleles 6 \\
-            #--max-genotype-count 1024 \\
-            #--num-reference-samples-if-no-call 0 \\
-            #--contamination-fraction-to-filter 0.0 \\
+            --standard-min-confidence-threshold-for-calling 30.0 \\
+            --max-alternate-alleles 6 \\
+            --max-genotype-count 1024 \\
+            --num-reference-samples-if-no-call 0 \\
+            --contamination-fraction-to-filter 0.0 \\
             --output-mode EMIT_VARIANTS_ONLY \\
-            #--all-site-pls false \\
+            --all-site-pls false 
             #--gvcf-gq-bands 1 --gvcf-gq-bands 2 --gvcf-gq-bands 3 --gvcf-gq-bands 4 --gvcf-gq-bands 5 --gvcf-gq-bands 6 --gvcf-gq-bands 7 --gvcf-gq-bands 8 --gvcf-gq-bands 9 --gvcf-gq-bands 10 \\
             #--gvcf-gq-bands 11 --gvcf-gq-bands 12 --gvcf-gq-bands 13 --gvcf-gq-bands 14 --gvcf-gq-bands 15 --gvcf-gq-bands 16 --gvcf-gq-bands 17 --gvcf-gq-bands 18 --gvcf-gq-bands 19 --gvcf-gq-bands 20 \\
             #--gvcf-gq-bands 21 --gvcf-gq-bands 22 --gvcf-gq-bands 23 --gvcf-gq-bands 24 --gvcf-gq-bands 25 --gvcf-gq-bands 26 --gvcf-gq-bands 27 --gvcf-gq-bands 28 --gvcf-gq-bands 29 --gvcf-gq-bands 30 \\
