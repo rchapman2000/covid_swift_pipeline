@@ -501,7 +501,7 @@ process Gatk {
                     --disable-tool-default-read-filters false \\
                     --minimum-mapping-quality 20 --disable-tool-default-annotations false --enable-all-annotations false --allow-old-rms-mapping-quality-annotation-data false"
         
-        cat *.vcf > \${R1}_gatk.vcf
+        cat *.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_gatk.vcf
     else
         touch \${R1}_gatk.vcf
     fi
