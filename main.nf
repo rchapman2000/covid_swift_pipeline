@@ -438,7 +438,7 @@ process Gatk {
         splitnum=$(($((29903/!{task.cpus}))+1))
         perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-                gatk HaplotypeCaller \\
+                "gatk HaplotypeCaller \\
                     -L {} \\
                     --sample-ploidy 2 \\
                     --dont-use-soft-clipped-bases true \\
