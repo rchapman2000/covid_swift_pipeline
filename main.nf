@@ -100,6 +100,7 @@ RIBOSOMAL_SLIPPAGE = file("${baseDir}/annotation/ribosomal_slippage.py")
 PROTEINS = file("${baseDir}/annotation/proteins.csv")
 CORRECT_AF = file("${baseDir}/annotation/correct_AF.py")
 CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
+CORRECT_AF_GATK = file("${baseDir}/annotation/correct_AF_gatk.py")
 
 
 /*
@@ -412,12 +413,12 @@ process Gatk {
         file SPLITCHR
     output:
 
-        //file("${base}_swift.fasta")
+        file("${base}_swift.fasta")
         file("${base}_gatk.vcf")
-        //file(INDEX_FILE)
-        //file("${base}_summary.csv")
+        file(INDEX_FILE)
+        file("${base}_summary.csv")
         // file("${base}.clipped.cleaned.bam")
-        //tuple val(base), val(bamsize), file("${base}_pre_bcftools.vcf") into Vcf_ch
+        tuple val(base), val(bamsize), file("${base}_gatk.vcf") into Vcf_ch
 
     publishDir params.OUTDIR, mode: 'copy'
 
@@ -504,9 +505,54 @@ process Gatk {
         cat *.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > catted.vcf
         sed '/#CHROM/q' catted.vcf > \${R1}_gatk.vcf
         grep "^NC_" catted.vcf >> \${R1}_gatk.vcf
+
+        bcftools filter -i '(AD[0:0]<AD[0:1])' \${R1}_gatk.vcf > \${R1}_consensus.vcf
+        bgzip \${R1}_consensus.vcf
+        tabix \${R1}_consensus.vcf.gz
+        cat !{REFERENCE_FASTA} | bcftools consensus \${R1}_consensus.vcf.gz > \${R1}.consensus.fa
+        /usr/local/miniconda/bin/bedtools genomecov \\
+            -bga \\
+            -ibam !{BAMFILE} \\
+            -g !{REFERENCE_FASTA} \\
+            | awk '\$4 < 6' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
+        awk '{ if(\$3 > 200 && \$2 < 29742) {print}}' \${R1}.mask.bed > a.tmp && mv a.tmp \${R1}.mask.bed
+        /usr/local/miniconda/bin/bedtools maskfasta \\
+            -fi !{REFERENCE_FASTA} \\
+            -bed \${R1}.mask.bed \\
+            -fo ref.mask.fasta
+        cat ref.mask.fasta \${R1}.consensus.fa > align_input.fasta
+        /usr/local/miniconda/bin/mafft --auto --thread !{task.cpus} align_input.fasta > repositioned.fasta
+        awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
+        
+        python3 !{TRIM_ENDS} \${R1}
+        # Find percent ns, doesn't work, fix later in python script
+        num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
+        num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
+        percent_n=$(awk -v num_ns=$num_ns -v num_bases=$num_bases 'BEGIN { print ( num_ns * 100 / num_bases ) }')
+        echo "num_bases=$num_bases"
+        echo "num_ns=$num_ns"
+        echo "percent_n=$percent_n"
     else
         touch \${R1}_gatk.vcf
+        echo "Empty bam detected. Generating empty consensus fasta file..."
+        printf '>!{base}\n' > \${R1}_swift.fasta
+        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
+        percent_n=100
     fi
+
+    cp \${R1}_summary3.csv \${R1}_summary.csv
+    printf ",\$percent_n" >> \${R1}_summary.csv
+
+    cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
+    mv a.tmp \${R1}_summary.csv
+
+    if [[ !{bamsize} > 92 ]]
+    then
+        python3 !{FIX_COVERAGE} \${R1}
+        mv \${R1}_summary_fixed.csv \${R1}_summary.csv
+    fi
+
+    [ -s \${R1}_swift.fasta ] || echo "WARNING: \${R1} produced blank output. Manual review may be needed."
     '''
 }
 
@@ -655,74 +701,73 @@ process Gatk {
 //         """
 //     }
 
-//     process annotateVariants {
-//         errorStrategy 'retry'
-//         maxRetries 3
+    process annotateVariants {
+        errorStrategy 'retry'
+        maxRetries 3
 
-//         container "quay.io/vpeddu/lava_image:latest"
+        container "quay.io/vpeddu/lava_image:latest"
 
-//         input:
-//             tuple val(base),val(bamsize),file("${base}_pre_bcftools.vcf") from Vcf_ch
-//             file MAT_PEPTIDES
-//             file MAT_PEPTIDE_ADDITION
-//             file RIBOSOMAL_SLIPPAGE
-//             file RIBOSOMAL_START
-//             file PROTEINS
-//             file AT_REFGENE
-//             file AT_REFGENE_MRNA
-//             file CORRECT_AF_BCFTOOLS
+        input:
+            tuple val(base), val(bamsize), file("${base}_gatk.vcf") from Vcf_ch
+            file MAT_PEPTIDES
+            file MAT_PEPTIDE_ADDITION
+            file RIBOSOMAL_SLIPPAGE
+            file RIBOSOMAL_START
+            file PROTEINS
+            file AT_REFGENE
+            file AT_REFGENE_MRNA
+            file CORRECT_AF_GATK
             
-//         output: 
-//             file("${base}_bcftools_variants.csv")
-//             file("*")
+        output: 
+            file("${base}_gatk_variants.csv")
         
-//         publishDir params.OUTDIR, mode: 'copy', pattern:'*_bcftools_variants.csv'
+        publishDir params.OUTDIR, mode: 'copy', pattern:'*_gatk_variants.csv'
 
-//         shell:
-//         '''
-//         #!/bin/bash
-//         ls -latr
+        shell:
+        '''
+        #!/bin/bash
+        ls -latr
         
-//         if (( !{bamsize} > 92))
-//         then
-//             # Fixes ploidy issues.
-//             #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-//             awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_pre_bcftools.vcf > !{base}_p.vcf
+        if (( !{bamsize} > 92))
+        then
+            # Fixes ploidy issues.
+            #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
+            awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_gatk.vcf > !{base}_p.vcf
 
-//             # Converts VCF to .avinput for Annovar.
-//             file="!{base}""_p.vcf"
-//             #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-//             convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-//             annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
+            # Converts VCF to .avinput for Annovar.
+            file="!{base}""_p.vcf"
+            #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+            convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+            annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
 
-//             #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
-//             cp !{base}.exonic_variant_function variants.txt
-//             #grep "SNV" !{base}.txt > a.tmp
-//             #grep "stop" !{base}.txt >> a.tmp
-//             #mv a.tmp variants.txt
+            #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
+            cp !{base}.exonic_variant_function variants.txt
+            #grep "SNV" !{base}.txt > a.tmp
+            #grep "stop" !{base}.txt >> a.tmp
+            #mv a.tmp variants.txt
         
-//             awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
+            awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
 
-//             grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
-//             grep -v "delins" !{base}.csv > final.csv
-//             # Sorts by beginning of mat peptide
-//             sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
-//             # Adds mature peptide differences from protein start.
-//             python3 !{MAT_PEPTIDE_ADDITION}
-//             rm mat_peptides.txt
-//             python3 !{CORRECT_AF_BCFTOOLS} -name !{base}
-//             # Corrects for ribosomal slippage.
-//             python3 !{RIBOSOMAL_SLIPPAGE} filtered_variants.csv proteins.csv
-//             awk NF final.csv > a.tmp && mv a.tmp final.csv
-//             sort -h -k2 -t, visualization.csv > !{base}_bcftools_variants.csv
+            grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
+            grep -v "delins" !{base}.csv > final.csv
+            # Sorts by beginning of mat peptide
+            sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
+            # Adds mature peptide differences from protein start.
+            python3 !{MAT_PEPTIDE_ADDITION}
+            rm mat_peptides.txt
+            python3 !{CORRECT_AF_GATK} -name !{base}
+            # Corrects for ribosomal slippage.
+            python3 !{RIBOSOMAL_SLIPPAGE} filtered_variants.csv proteins.csv
+            awk NF final.csv > a.tmp && mv a.tmp final.csv
+            sort -h -k2 -t, visualization.csv > !{base}_gatk_variants.csv
 
-//         else 
-//             echo "Bam is empty, skipping annotation."
-//             touch !{base}_bcftools_variants.csv
-//         fi
+        else 
+            echo "Bam is empty, skipping annotation."
+            touch !{base}_gatk_variants.csv
+        fi
 
-//         '''
-//     }
+        '''
+    }
 
 //     // process annotateVariants_Lofreq {
 //     //     errorStrategy 'retry'
