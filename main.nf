@@ -396,7 +396,7 @@ process Clipping {
 }
 
 process Gatk {
-    container "quay.io/biocontainers/gatk4:4.1.9.0--py39_0"
+    container "quay.io/vpeddu/lava_image:latest"
 
 	// Retry on fail at most three times 
     errorStrategy 'retry'
