@@ -455,7 +455,8 @@ process Gatk {
                     --contamination-fraction-to-filter 0.0 \\
                     --output-mode EMIT_VARIANTS_ONLY \\
                     --all-site-pls false \\
-                    --native-pair-hmm-threads !{task.cpus} --native-pair-hmm-use-double-precision false \\
+                    #--native-pair-hmm-threads !{task.cpus} \\
+                    --native-pair-hmm-use-double-precision false \\
                     --gvcf-gq-bands 1 --gvcf-gq-bands 2 --gvcf-gq-bands 3 --gvcf-gq-bands 4 --gvcf-gq-bands 5 --gvcf-gq-bands 6 --gvcf-gq-bands 7 --gvcf-gq-bands 8 --gvcf-gq-bands 9 --gvcf-gq-bands 10 \\
                     --gvcf-gq-bands 11 --gvcf-gq-bands 12 --gvcf-gq-bands 13 --gvcf-gq-bands 14 --gvcf-gq-bands 15 --gvcf-gq-bands 16 --gvcf-gq-bands 17 --gvcf-gq-bands 18 --gvcf-gq-bands 19 --gvcf-gq-bands 20 \\
                     --gvcf-gq-bands 21 --gvcf-gq-bands 22 --gvcf-gq-bands 23 --gvcf-gq-bands 24 --gvcf-gq-bands 25 --gvcf-gq-bands 26 --gvcf-gq-bands 27 --gvcf-gq-bands 28 --gvcf-gq-bands 29 --gvcf-gq-bands 30 \\
