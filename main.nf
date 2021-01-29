@@ -435,8 +435,9 @@ process Gatk {
     if (( !{bamsize} > 92 ))
     then
         gatk CreateSequenceDictionary -R !{REFERENCE_FASTA}
-        splitnum=$(($((29903/!{task.cpus}))+1))
-        perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
+        #splitnum=$(($((29903/!{task.cpus}))+1))
+        #perl !{VCFUTILS} splitchr -l $splitnum !{REFERENCE_FASTA_FAI} | \\
+        cat !{SPLITCHR} | \\
             xargs -I {} -n 1 -P !{task.cpus} sh -c \\
                 "gatk HaplotypeCaller \\
                     -L {} \\
