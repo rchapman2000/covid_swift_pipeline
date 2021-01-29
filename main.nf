@@ -443,7 +443,7 @@ process Gatk {
                     -L {} \\
                     --sample-ploidy 2 \\
                     --dont-use-soft-clipped-bases true \\
-                    --output tmp.{}.vcf.gz \\
+                    --output tmp.{}.vcf \\
                     --input !{BAMFILE} \\
                     --reference !{REFERENCE_FASTA} \\
                     --annotate-with-num-discovered-alleles false \\
@@ -501,7 +501,7 @@ process Gatk {
                     --disable-tool-default-read-filters false \\
                     --minimum-mapping-quality 20 --disable-tool-default-annotations false --enable-all-annotations false --allow-old-rms-mapping-quality-annotation-data false"
         
-        cat *.vcf.gz > \${R1}_catted.vcf.gz
+        cat *.vcf > \${R1}_gatk.vcf
     else
         touch \${R1}_gatk.vcf
     fi
