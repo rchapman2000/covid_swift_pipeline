@@ -506,10 +506,10 @@ process Gatk {
         sed '/#CHROM/q' catted.vcf > \${R1}_gatk.vcf
         grep "^NC_" catted.vcf >> \${R1}_gatk.vcf
 
-        bcftools filter -i '(AD[0:0]<AD[0:1])' \${R1}_gatk.vcf > \${R1}_consensus.vcf
-        bgzip \${R1}_consensus.vcf
-        tabix \${R1}_consensus.vcf.gz
-        cat !{REFERENCE_FASTA} | bcftools consensus \${R1}_consensus.vcf.gz > \${R1}.consensus.fa
+        /usr/local/miniconda/bin/bcftools filter -i '(AD[0:0]<AD[0:1])' \${R1}_gatk.vcf > \${R1}_consensus.vcf
+        /usr/local/miniconda/bin/bgzip \${R1}_consensus.vcf
+        /usr/local/miniconda/bin/tabix \${R1}_consensus.vcf.gz
+        cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}_consensus.vcf.gz > \${R1}.consensus.fa
         /usr/local/miniconda/bin/bedtools genomecov \\
             -bga \\
             -ibam !{BAMFILE} \\
