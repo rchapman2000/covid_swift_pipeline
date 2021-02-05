@@ -87,15 +87,14 @@ with open("filtered_variants.txt") as f:
                 # Writes full mature peptide annotation.
                 mat_peptide = mat_name + "," + str(mat_aa_num) + "," + amino_ref + "," + amino_alt
                 mat_peptide2 = mat_name
+                print(mat_peptide)
 
         if (line.split(",")[1]=="ORF1ab_polyprotein_ribosomal_slippage"):
             gene_name = "ORF1ab_polyprotein"
         else:
             gene_name = line.split(",")[1]
 
-        #STUDYID,USUBJID,NGSPL,Visit,SAMPLEID,clade,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,snpid,nsp,NSPPOS,NSPREF,NSPSUB
-        line = ",,Illumina,," + line.split(",")[0] + ",," + line.split(",")[1] + "," + line.split(',')[3] + "," + amino_ref + "," + amino_alt + "," + line.split(",")[9] + "," + line.split(",")[10] + "," + line.split(",")[7] + "," + nuc
-
+        
         # Corrects for ribosomal slippage by adding correction_number to 
         # original nucleotide/residue number.
         if '_ribosomal_slippage' in line:
@@ -109,9 +108,14 @@ with open("filtered_variants.txt") as f:
             #visualization_line = visualization_line + "," + amino_replacement
 
             #ribosomal_corrected.write(new_line + "," + mat_peptide + '\n')
-            visualization.write(line + "," + mat_peptide2 + "," + str(amino_replacement) + "," + amino_ref + "," + amino_alt + "\n")
+            #STUDYID,USUBJID,NGSPL,Visit,SAMPLEID,clade,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,snpid,nsp,NSPPOS,NSPREF,NSPSUB
+            amino_pos = str(amino_replacement)
         else:
-            visualization.write(line + "," + mat_peptide + "\n")
+            amino_pos = line.split(',')[3]
+        
+        #STUDYID,USUBJID,NGSPL,Visit,SAMPLEID,clade,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,snpid,nsp,NSPPOS,NSPREF,NSPSUB    
+        line = line.split(",")[0] + "," + line.split(",")[1] + "," + amino_pos + "," + amino_ref + "," + amino_alt + "," + line.split(",")[9] + "," + line.split(",")[10] + "," + line.split(",")[7] + "," + nuc
+        visualization.write(line + "," + mat_peptide + "\n")
 
 
 ### Previous code prior to Novavax variant changes

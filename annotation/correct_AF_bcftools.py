@@ -95,13 +95,16 @@ if __name__ == '__main__':
                     if(type=="nonframeshift deletion"):
                         translated_ref = translate(nuc_ref)
                         aa_start_pos = int(fixed_aa_change.split("_")[0])
+                        nuc_pos = int(line_parts[4])
                         for codon in range(3,len(nuc_ref) + 1, 3):
                             split_nuc_ref = (nuc_ref[codon-3:codon])
                             split_amino_ref = (translated_ref[int(codon/3)-1])
-                            nuc_change = split_nuc_ref + line_parts[4] + "del"
+                            nuc_change = split_nuc_ref + str(nuc_pos) + "del"
                             #                SAMPLE_ID              GENE                  GENPOS                   AAPOS                      AAREF              AASUB           NUCCHANGE             AAFREQ               DEPTH                                                                   TYPE
-                            fixed_file.write(sample_name + "," + str(fixed_protein) + "," + line_parts[4] + "," + str(aa_start_pos) + "," + split_amino_ref + "," + "-" + "," + nuc_change + "," + str(af) + "," + str(fixed_depth) + "," + str(allele_ref) + "," + str(allele_alt) + "," + line_parts[1] + "," + nuc_num + "\n")#+ "," + mat_peptide + "," + mat_peptide_nuc_change + "," + mat_peptide_aa_change + "\n") 
+                            fixed_file.write(sample_name + "," + str(fixed_protein) + "," + str(nuc_pos) + "," + str(aa_start_pos) + "," + split_amino_ref + "," + "-" + "," + nuc_change + "," + str(af) + "," + str(fixed_depth) + "," + str(allele_ref) + "," + str(allele_alt) + "," + line_parts[1] + "," + str(nuc_num) + "\n")#+ "," + mat_peptide + "," + mat_peptide_nuc_change + "," + mat_peptide_aa_change + "\n") 
                             aa_start_pos += 1
+                            nuc_pos +=3
+                            nuc_num = int(nuc_num) + 3 
                     elif(type=="nonframeshift insertion"):
                         translated_alt = translate(nuc_alt)
                         aa_start_pos = fixed_aa_change.split("delins")[0][1:]
