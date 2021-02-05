@@ -599,7 +599,8 @@ if(params.VARIANTS != false) {
             # Corrects for ribosomal slippage.
             python3 !{RIBOSOMAL_SLIPPAGE} filtered_variants.csv proteins.csv
             awk NF final.csv > a.tmp && mv a.tmp final.csv
-            sort -h -k2 -t, visualization.csv > !{base}_bcftools_variants.csv
+            echo "STUDYID,USUBJID,NGSPL,Visit,SAMPLEID,clade,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,snpid,nsp,NSPPOS,NSPREF,NSPSUB" > !{base}_bcftools_variants.csv
+            sort -h -k2 -t, visualization.csv >> !{base}_bcftools_variants.csv
 
         else 
             echo "Bam is empty, skipping annotation."

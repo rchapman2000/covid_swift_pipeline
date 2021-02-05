@@ -40,7 +40,7 @@ visualization = open('visualization.csv', 'w')
 correction_number = int(correction_number)
 residue_correction_number = int(residue_correction_number)
 
-visualization.write("STUDYID,USUBJID,NGSPL,Visit,SAMPLEID,clade,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,snpid,nsp,NSPPOS,NSPREF,NSPSUB\n")
+#visualization.write("STUDYID,USUBJID,NGSPL,Visit,SAMPLEID,clade,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,snpid,nsp,NSPPOS,NSPREF,NSPSUB\n")
 
 # Looping through all mutations we found
 with open("filtered_variants.txt") as f:
@@ -85,7 +85,7 @@ with open("filtered_variants.txt") as f:
                 mat_aa = amino_ref + str(mat_aa_num) + amino_alt
 
                 # Writes full mature peptide annotation.
-                mat_peptide = mat_name + "," + str(mat_aa_num) + "," + amino_ref + "," + amino_alt + "\n"
+                mat_peptide = mat_name + "," + str(mat_aa_num) + "," + amino_ref + "," + amino_alt
 
         if (line.split(",")[1]=="ORF1ab_polyprotein_ribosomal_slippage"):
             gene_name = "ORF1ab_polyprotein"
@@ -110,7 +110,7 @@ with open("filtered_variants.txt") as f:
             #ribosomal_corrected.write(new_line + "," + mat_peptide + '\n')
             visualization.write(line + "," + mat_name + "," + str(amino_replacement) + "," + amino_ref + "," + amino_alt + "\n")
         else:
-            visualization.write(line + "," + mat_peptide)
+            visualization.write(line + "," + mat_peptide + "\n")
 
 
 ### Previous code prior to Novavax variant changes
