@@ -93,7 +93,7 @@ with open("filtered_variants.txt") as f:
             gene_name = line.split(",")[1]
 
         #STUDYID,USUBJID,NGSPL,Visit,SAMPLEID,clade,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,snpid,nsp,NSPPOS,NSPREF,NSPSUB
-        line = ",,Illumina,," + line.split(",")[0] + "," + line.split(",")[1] + "," + line.split(',')[3] + "," + amino_ref + "," + amino_alt + "," + line.split(",")[9] + "," + line.split(",")[10] + "," + line.split(",")[8] + "," + nuc + "," + amino_ref + "," + amino_alt
+        line = ",,Illumina,," + line.split(",")[0] + ",," + line.split(",")[1] + "," + line.split(',')[3] + "," + amino_ref + "," + amino_alt + "," + line.split(",")[9] + "," + line.split(",")[10] + "," + line.split(",")[8] + "," + nuc + "," + amino_ref + "," + amino_alt
 
         # Corrects for ribosomal slippage by adding correction_number to 
         # original nucleotide/residue number.
