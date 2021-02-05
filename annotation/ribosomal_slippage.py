@@ -50,7 +50,6 @@ with open("filtered_variants.txt") as f:
     #visualization.write(header.rstrip() + ",NucCorrect,AminoCorrect,MatPeptide" + '\n')
 
     for row in f:
-        print(line)
         line = row.rstrip()
         # Finds the nucleotide and amino acid numbers that need to be changed.
         # Formatting is different for deletions because of extra 'del.'
@@ -66,6 +65,7 @@ with open("filtered_variants.txt") as f:
             #     index = index + 1
 
         mat_peptide = "-"
+        mat_peptide2 = ""
         # Going through and checking which mature peptide it falls under
         for mature_peptide in open("mat_peptides_additions.txt"):
             mat_name = mature_peptide.split(',')[0]
@@ -86,6 +86,7 @@ with open("filtered_variants.txt") as f:
 
                 # Writes full mature peptide annotation.
                 mat_peptide = mat_name + "," + str(mat_aa_num) + "," + amino_ref + "," + amino_alt
+                mat_peptide2 = mat_name
 
         if (line.split(",")[1]=="ORF1ab_polyprotein_ribosomal_slippage"):
             gene_name = "ORF1ab_polyprotein"
@@ -108,7 +109,7 @@ with open("filtered_variants.txt") as f:
             #visualization_line = visualization_line + "," + amino_replacement
 
             #ribosomal_corrected.write(new_line + "," + mat_peptide + '\n')
-            visualization.write(line + "," + mat_name + "," + str(amino_replacement) + "," + amino_ref + "," + amino_alt + "\n")
+            visualization.write(line + "," + mat_peptide2 + "," + str(amino_replacement) + "," + amino_ref + "," + amino_alt + "\n")
         else:
             visualization.write(line + "," + mat_peptide + "\n")
 
