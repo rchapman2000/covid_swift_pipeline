@@ -508,37 +508,37 @@ process generateConsensus {
 }
 
 if(params.VARIANTS != false) { 
-    process lofreq {
-        container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
+    // process lofreq {
+    //     container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
 
-        // Retry on fail at most three times 
-        errorStrategy 'retry'
-        maxRetries 3
+    //     // Retry on fail at most three times 
+    //     errorStrategy 'retry'
+    //     maxRetries 3
 
-        input:
-        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
-        file REFERENCE_FASTA
-        output:
-        file("${base}_lofreq.vcf")
-        tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
+    //     input:
+    //     tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),val(bamsize) from Clipped_bam_ch2
+    //     file REFERENCE_FASTA
+    //     output:
+    //     file("${base}_lofreq.vcf")
+    //     tuple val(base),val(bamsize),file("${base}_lofreq.vcf") into Vcf_ch2
         
-        publishDir params.OUTDIR, mode: 'copy'
+    //     publishDir params.OUTDIR, mode: 'copy'
 
-        script:
-        """
-        #!/bin/bash
+    //     script:
+    //     """
+    //     #!/bin/bash
 
-        echo ${bamsize}
-        if (( ${bamsize} > 92))
-        then
-            lofreq faidx ${REFERENCE_FASTA}
-            /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
-        else
-            touch ${base}_lofreq.vcf
-        fi
+    //     echo ${bamsize}
+    //     if (( ${bamsize} > 92))
+    //     then
+    //         lofreq faidx ${REFERENCE_FASTA}
+    //         /usr/local/bin/lofreq call-parallel --pp-threads ${task.cpus} --call-indels -f ${REFERENCE_FASTA} -o ${base}_lofreq.vcf ${base}.clipped.bam
+    //     else
+    //         touch ${base}_lofreq.vcf
+    //     fi
 
-        """
-    }
+    //     """
+    // }
 
     process annotateVariants {
         errorStrategy 'retry'
@@ -677,49 +677,49 @@ if(params.VARIANTS != false) {
     //     '''
     // }
 
-    process varscan2 { 
-        container "quay.io/vpeddu/lava_image:latest"
+//     process varscan2 { 
+//         container "quay.io/vpeddu/lava_image:latest"
 
-        // Retry on fail at most three times 
-        errorStrategy 'retry'
-        maxRetries 3
+//         // Retry on fail at most three times 
+//         errorStrategy 'retry'
+//         maxRetries 3
 
-        input:
-            tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) from Clipped_bam_ch3
-            file REFERENCE_FASTA
-            file REFERENCE_FASTA_FAI
-            file SPLITCHR
-        output:
-            tuple val(base),val(bamsize),file("${base}_varscan.vcf") into Varscan_ch
+//         input:
+//             tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) from Clipped_bam_ch3
+//             file REFERENCE_FASTA
+//             file REFERENCE_FASTA_FAI
+//             file SPLITCHR
+//         output:
+//             tuple val(base),val(bamsize),file("${base}_varscan.vcf") into Varscan_ch
 
-        publishDir params.OUTDIR, mode: 'copy'
+//         publishDir params.OUTDIR, mode: 'copy'
 
-        shell:
-        '''
-        #!/bin/bash
-        ls -latr
-        R1=`basename !{BAMFILE} .clipped.bam`
-        echo "bamsize: !{bamsize}"
-        #if [ -s !{BAMFILE} ]
-        # More reliable way of checking bam size, because of aliases
-        if (( !{bamsize} > 92 ))
-        then
-            # Parallelize pileup based on number of cores
-            splitnum=$(($((29903/!{task.cpus}))+1))
-            cat !{SPLITCHR} | \\
-                xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-                    "/usr/local/miniconda/bin/samtools mpileup \\
-                        -f !{REFERENCE_FASTA} -r {} \\
-                        -B \\
-                        --max-depth 50000 \\
-                        --max-idepth 500000 \\
-                    !{BAMFILE} | 
-                    java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
+//         shell:
+//         '''
+//         #!/bin/bash
+//         ls -latr
+//         R1=`basename !{BAMFILE} .clipped.bam`
+//         echo "bamsize: !{bamsize}"
+//         #if [ -s !{BAMFILE} ]
+//         # More reliable way of checking bam size, because of aliases
+//         if (( !{bamsize} > 92 ))
+//         then
+//             # Parallelize pileup based on number of cores
+//             splitnum=$(($((29903/!{task.cpus}))+1))
+//             cat !{SPLITCHR} | \\
+//                 xargs -I {} -n 1 -P !{task.cpus} sh -c \\
+//                     "/usr/local/miniconda/bin/samtools mpileup \\
+//                         -f !{REFERENCE_FASTA} -r {} \\
+//                         -B \\
+//                         --max-depth 50000 \\
+//                         --max-idepth 500000 \\
+//                     !{BAMFILE} | 
+//                     java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
             
-            cat *.vcf > \${R1}_varscan.vcf
-        else
-        touch \${R1}_varscan.vcf
-        fi
-        '''
-}
+//             cat *.vcf > \${R1}_varscan.vcf
+//         else
+//         touch \${R1}_varscan.vcf
+//         fi
+//         '''
+// }
 }
