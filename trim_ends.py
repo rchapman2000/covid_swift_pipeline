@@ -34,5 +34,6 @@ if __name__ == '__main__':
 				if(line_masked[index]!="-"):
 					line_masked = replace_str_index(line_masked,index,"n")
 			line_trimmed = line_masked[201:29741]
-			new_fasta.write(line_trimmed)
+			final_line = line_trimmed.replace("-","")
+			new_fasta.write(final_line)
 		line_num = line_num + 1
