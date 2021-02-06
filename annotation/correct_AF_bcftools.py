@@ -90,7 +90,7 @@ if __name__ == '__main__':
                         nuc_num = int(nuc[1:-1])
                     
                     nuc_num=str(nuc_num)
-                    
+                                        
                     # Time to break up some indels into multiple lines
                     if(type=="nonframeshift deletion"):
                         translated_ref = translate(nuc_ref)
@@ -118,7 +118,10 @@ if __name__ == '__main__':
                         split_amino_ref = fixed_aa_change[0]
                         aa_start_pos = fixed_aa_change.split("fs")[0][1:]
                         split_amino_alt = "fs"
-                        nuc_change = line_parts[4] + "dup" + fixed_nuc_change.split("dup")[1]
+                        if("dup" in nuc):
+                            nuc_change = line_parts[4] + "dup" + fixed_nuc_change.split("dup")[1]
+                        else:
+                            nuc_change = line_parts[4] + "ins" + fixed_nuc_change.split("ins")[1]
                         #                SAMPLE_ID              GENE                  GENPOS                   AAPOS                      AAREF                         AASUB               NUCCHANGE             AAFREQ               DEPTH                                                                   TYPE
                         fixed_file.write(sample_name + "," + str(fixed_protein) + "," + line_parts[4] + "," + str(aa_start_pos) + "," + split_amino_ref + "," + split_amino_alt + "," + nuc_change + "," + str(af) + "," + str(fixed_depth) + "," + str(allele_ref) + "," + str(allele_alt) + "," + line_parts[1] + "," + nuc_num  + "\n")#+ "," + mat_peptide + "," + mat_peptide_nuc_change + "," + mat_peptide_aa_change + "\n") 
                     
