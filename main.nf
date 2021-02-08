@@ -14,8 +14,7 @@ def helpMessage() {
         --PRIMERS       Primer masterfile to run. By default, this pipeline uses the original Swift V1 primers. --PRIMERS V2 can be specified for the Swift V2 primer set.
         --SINGLE_END    Optional flag for single end reads. By default, this pipeline does 
                         paired-end reads.
-        --VARIANTS      Include variant annotation at the end of the pipeline.
-        --TRIM_SGRNAS   Include leader sequence in adapters to trim.
+        --NO_CLIPPING   Skip primerclip.
 
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
@@ -40,6 +39,7 @@ params.SINGLE_END = false
 params.PRIMERS = false
 params.VARIANTS = false
 params.TRIM_SGRNAS = false
+params.NO_CLIPPING = false
 TRIM_ENDS=file("${baseDir}/trim_ends.py")
 VCFUTILS=file("${baseDir}/vcfutils.pl")
 SPLITCHR=file("${baseDir}/splitchr.txt")
@@ -85,11 +85,11 @@ else {
 }
 FIX_COVERAGE = file("${baseDir}/fix_coverage.py")
 PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
-if (params.VARIANTS == false) {
-    println("--VARIANTS not specified. Skipping annotation of amino acid changes at end of pipeline...")
-} else {
-    println("--VARIANTS specified. Will annotate amino acid changes at end of pipeline...")
-}
+// if (params.VARIANTS == false) {
+//     println("--VARIANTS not specified. Skipping annotation of amino acid changes at end of pipeline...")
+// } else {
+//     println("--VARIANTS specified. Will annotate amino acid changes at end of pipeline...")
+// }
 AT_REFGENE = file("${baseDir}/annotation/AT_refGene.txt")
 AT_REFGENE_MRNA = file("${baseDir}/annotation/AT_refGeneMrna.fa")
 LAVA_GFF = file("${baseDir}/annotation/lava_ref.gff")
@@ -317,7 +317,8 @@ process Aligning_SE {
 }
 }
 
-process NameSorting { 
+if(params.NO_CLIPPING == false) {
+    process NameSorting { 
     container "quay.io/biocontainers/samtools:1.3--h0592bc0_3"
 
 	// Retry on fail at most three times 
@@ -392,7 +393,56 @@ process Clipping {
         cp ${base}_summary2.csv ${base}_summary3.csv
         printf ",\$clipped_reads,\$meancoverage,\$avgcoverage,\$cov100,\$cov200,\$mincov" >> ${base}_summary3.csv
         """
+    } 
+} else {
+    process BamSorting { 
+    container "quay.io/greninger-lab/swift-pipeline:latest"
+
+	// Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input:
+      tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") from Aligned_bam_ch
+    output:
+      tuple val (base), file("${base}.sorted.bam"),file("${base}.sorted.bam.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
     
+    publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary.csv'
+
+    script:
+    """
+    #!/bin/bash
+    /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.bam > ${base}.sorted.bam
+    /usr/local/miniconda/bin/samtools index ${base}.sorted.bam
+
+    clipped_reads=0
+    /usr/local/miniconda/bin/bedtools genomecov -d -ibam ${base}.sorted.bam > ${base}_coverage.txt
+    meancoverage=\$(cat ${base}_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
+    bamsize=\$((\$(wc -c ${base}.sorted.bam | awk '{print \$1'})+0))
+    echo "bamsize: \$bamsize"
+    if (( \$bamsize > 92 ))
+    then
+        # Spike protein coverage
+        awk '\$2 ~ /21563/,\$2 ~ /25384/' ${base}_coverage.txt > ${base}_spike_coverage.txt
+        avgcoverage=\$(cat ${base}_spike_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
+        proteinlength=\$((25384-21563+1))
+        cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
+        cov200=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=200' | wc -l)/3822))
+        mincov=\$(sort -nk 3 ${base}_spike_coverage.txt | head -n 1 | cut -f3)
+    else
+        avgcoverage=0
+        cov100=0
+        cov200=0
+        mincov=0
+    fi
+
+    cp ${base}_summary2.csv ${base}_summary3.csv
+    printf ",\$clipped_reads,\$meancoverage,\$avgcoverage,\$cov100,\$cov200,\$mincov" >> ${base}_summary3.csv
+
+
+    """
+}
+
 }
 
 process generateConsensus {
@@ -425,7 +475,7 @@ process generateConsensus {
     #!/bin/bash
     ls -latr
 
-    R1=`basename !{BAMFILE} .clipped.bam`
+    R1=!{base}
 
     echo "bamsize: !{bamsize}"
 
@@ -507,7 +557,7 @@ process generateConsensus {
     '''
 }
 
-if(params.VARIANTS != false) { 
+// if(params.VARIANTS != false) { 
     // process lofreq {
     //     container "quay.io/biocontainers/lofreq:2.1.5--py38h1bd3507_3"
 
@@ -724,4 +774,4 @@ if(params.VARIANTS != false) {
 //         fi
 //         '''
 // }
-}
+// }
