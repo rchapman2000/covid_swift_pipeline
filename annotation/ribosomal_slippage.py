@@ -113,8 +113,8 @@ with open("filtered_variants.txt") as f:
         else:
             amino_pos = line.split(',')[3]
         
-        #SAMPLEID,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,snpid,nsp,NSPPOS,NSPREF,NSPSUB    
-        line = line.split(",")[0] + "," + line.split(",")[1] + "," + amino_pos + "," + amino_ref + "," + amino_alt + "," + line.split(",")[8] + "," + line.split(",")[10] + "," + line.split(",")[7] + "," + nuc
+        #SAMPLEID,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,snpid,NTPOS,nsp,NSPPOS,NSPREF,NSPSUB    
+        line = line.split(",")[0] + "," + line.split(",")[1] + "," + amino_pos + "," + amino_ref + "," + amino_alt + "," + line.split(",")[8] + "," + line.split(",")[10] + "," + line.split(",")[7] + "," + str(position) + "," + nuc
         visualization.write(line + "," + mat_peptide + "\n")
 
 
