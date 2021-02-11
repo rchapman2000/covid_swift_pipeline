@@ -14,7 +14,7 @@ def helpMessage() {
         --PRIMERS       Primer masterfile to run. By default, this pipeline uses the original Swift V1 primers. --PRIMERS V2 can be specified for the Swift V2 primer set.
         --SINGLE_END    Optional flag for single end reads. By default, this pipeline does 
                         paired-end reads.
-        --NO_CLIPPING   Skip primerclip.
+        --NO_CLIPPING   Skip primerclip option.
 
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
@@ -22,9 +22,13 @@ def helpMessage() {
     """.stripIndent()
 }
 
-/*
- * SET UP CONFIGURATION VARIABLES
- */
+////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+/*                                                    */
+/*          SET UP CONFIGURATION VARIABLES            */
+/*                                                    */
+////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 
 // Show help message
 params.help = false
@@ -33,16 +37,13 @@ if (params.help){
     exit 0
 }
 
+// Initializing flags
 params.INPUT = false
 params.OUTDIR= false
 params.SINGLE_END = false
 params.PRIMERS = false
 params.VARIANTS = false
-params.TRIM_SGRNAS = false
 params.NO_CLIPPING = false
-TRIM_ENDS=file("${baseDir}/trim_ends.py")
-VCFUTILS=file("${baseDir}/vcfutils.pl")
-SPLITCHR=file("${baseDir}/splitchr.txt")
 
 // if INPUT not set
 if (params.INPUT == false) {
@@ -65,9 +66,7 @@ if (!params.OUTDIR.endsWith("/")){
    exit(1)
 }
 
-// Setting up files 
-REFERENCE_FASTA = file("${baseDir}/NC_045512.2.fasta")
-REFERENCE_FASTA_FAI = file("${baseDir}/NC_045512.2.fasta.fai")
+// Use Swift V2 masterfile if --PRIMERS v2 indicated
 if (params.PRIMERS == "V2" | params.PRIMERS == "v2") {
     MASTERFILE = file("${baseDir}/sarscov2_v2_masterfile.txt")
     println("Using Swift V2 primerset...")
@@ -76,20 +75,22 @@ else {
     MASTERFILE = file("${baseDir}/sarscov2_masterfile.txt")
     println("Using Swift V1 primerset [default]...")
 }
-if (params.TRIM_SGRNAS != false) {
-    ADAPTERS = file("${baseDir}/All_adapters_sgrna.fa")
-    println("Using adapters to trim sgrnas...")
-}
-else {
-    ADAPTERS = file("${baseDir}/All_adapters.fa")
-}
-FIX_COVERAGE = file("${baseDir}/fix_coverage.py")
-PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
 // if (params.VARIANTS == false) {
 //     println("--VARIANTS not specified. Skipping annotation of amino acid changes at end of pipeline...")
 // } else {
 //     println("--VARIANTS specified. Will annotate amino acid changes at end of pipeline...")
 // }
+
+
+// Setting up files 
+REFERENCE_FASTA = file("${baseDir}/NC_045512.2.fasta")
+REFERENCE_FASTA_FAI = file("${baseDir}/NC_045512.2.fasta.fai")
+TRIM_ENDS=file("${baseDir}/trim_ends.py")
+VCFUTILS=file("${baseDir}/vcfutils.pl")
+SPLITCHR=file("${baseDir}/splitchr.txt")
+ADAPTERS = file("${baseDir}/All_adapters.fa")
+FIX_COVERAGE = file("${baseDir}/fix_coverage.py")
+PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
 AT_REFGENE = file("${baseDir}/annotation/AT_refGene.txt")
 AT_REFGENE_MRNA = file("${baseDir}/annotation/AT_refGeneMrna.fa")
 LAVA_GFF = file("${baseDir}/annotation/lava_ref.gff")
@@ -102,222 +103,244 @@ CORRECT_AF = file("${baseDir}/annotation/correct_AF.py")
 CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
 
 
-/*
- * PIPELINE
- */
+////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+/*                                                    */
+/*                 RUN THE WORKFLOW                   */
+/*                                                    */
+////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
 
-// Paired end first three steps
+//// 
+// Paired end trimming, fastqc, aligning
+////
 if(params.SINGLE_END == false){ 
+    // Check for R1s and R2s in input directory
     input_read_ch = Channel
         .fromFilePairs("${params.INPUT}*_R{1,2}*.gz")
         .ifEmpty { error "Cannot find any FASTQ pairs in ${params.INPUT} ending with .gz" }
         .map { it -> [it[0], it[1][0], it[1][1]]}
 
-process Trimming { 
-    container "quay.io/biocontainers/trimmomatic:0.35--6"
+    // Use Trimmomatic to trim files, above Q20, minlen of 75
+    // Initialize summary file and input trimming stats into summary file
+    process Trimming { 
+        container "quay.io/biocontainers/trimmomatic:0.35--6"
 
-	// Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
+        // Retry on fail at most three times 
+        errorStrategy 'retry'
+        maxRetries 3
 
-    input:
-      tuple val(base), file(R1), file(R2) from input_read_ch
-      file ADAPTERS
-    output: 
-      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") into Trim_out_ch
-      tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") into Trim_out_ch2
+        input:
+        tuple val(base), file(R1), file(R2) from input_read_ch
+        file ADAPTERS
+        output: 
+        tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") into Trim_out_ch
+        tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") into Trim_out_ch2
 
-    publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*fastq*'
+        publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*fastq*'
 
-    script:
-    """
-    #!/bin/bash
+        script:
+        """
+        #!/bin/bash
 
-    trimmomatic PE -threads ${task.cpus} ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
-    ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:75
+        trimmomatic PE -threads ${task.cpus} ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
+        ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:75
 
-    num_r1_untrimmed=\$(gunzip -c ${R1} | wc -l)
-    num_r2_untrimmed=\$(gunzip -c ${R2} | wc -l)
-    num_untrimmed=\$((\$((num_r1_untrimmed + num_r2_untrimmed))/4))
+        num_r1_untrimmed=\$(gunzip -c ${R1} | wc -l)
+        num_r2_untrimmed=\$(gunzip -c ${R2} | wc -l)
+        num_untrimmed=\$((\$((num_r1_untrimmed + num_r2_untrimmed))/4))
 
-    num_r1_paired=\$(gunzip -c ${base}.R1.paired.fastq.gz | wc -l)
-    num_r2_paired=\$(gunzip -c ${base}.R2.paired.fastq.gz | wc -l)
-    num_paired=\$((\$((num_r1_paired + num_r2_paired))/4))
+        num_r1_paired=\$(gunzip -c ${base}.R1.paired.fastq.gz | wc -l)
+        num_r2_paired=\$(gunzip -c ${base}.R2.paired.fastq.gz | wc -l)
+        num_paired=\$((\$((num_r1_paired + num_r2_paired))/4))
 
-    num_r1_unpaired=\$(gunzip -c ${base}.R1.unpaired.fastq.gz | wc -l)
-    num_r2_unpaired=\$(gunzip -c ${base}.R2.unpaired.fastq.gz | wc -l)
-    num_unpaired=\$((\$((num_r1_unpaired + num_r2_unpaired))/4))
+        num_r1_unpaired=\$(gunzip -c ${base}.R1.unpaired.fastq.gz | wc -l)
+        num_r2_unpaired=\$(gunzip -c ${base}.R2.unpaired.fastq.gz | wc -l)
+        num_unpaired=\$((\$((num_r1_unpaired + num_r2_unpaired))/4))
 
-    num_trimmed=\$((num_paired + num_unpaired))
-    
-    percent_trimmed=\$((100-\$((100*num_trimmed/num_untrimmed))))
-    
-    echo Sample_Name,Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Lowest_Spike_Cov,Percent_N > ${base}_summary.csv
-    printf "${base},\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed,\$percent_trimmed" >> ${base}_summary.csv
-    
-    """
-}
+        num_trimmed=\$((num_paired + num_unpaired))
+        
+        percent_trimmed=\$((100-\$((100*num_trimmed/num_untrimmed))))
+        
+        echo Sample_Name,Raw_Reads,Trimmed_Paired_Reads,Trimmed_Unpaired_Reads,Total_Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Lowest_Spike_Cov,Percent_N > ${base}_summary.csv
+        printf "${base},\$num_untrimmed,\$num_paired,\$num_unpaired,\$num_trimmed,\$percent_trimmed" >> ${base}_summary.csv
+        
+        """
+    }
 
-process fastQc {
-    container "quay.io/biocontainers/fastqc:0.11.9--0"
+    // Fastqc our fastq files for quick sanity check
+    process fastQc {
+        container "quay.io/biocontainers/fastqc:0.11.9--0"
 
-	// Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
+        // Retry on fail at most three times 
+        errorStrategy 'retry'
+        maxRetries 3
 
-    input:
-      tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") from Trim_out_ch2
-    output: 
-      file("*fastqc*") into Fastqc_ch 
+        input:
+        tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") from Trim_out_ch2
+        output: 
+        file("*fastqc*") into Fastqc_ch 
 
-    publishDir "${params.OUTDIR}fastqc", mode: 'copy'
+        publishDir "${params.OUTDIR}fastqc", mode: 'copy'
 
-    script:
-    """
-    #!/bin/bash
+        script:
+        """
+        #!/bin/bash
 
-    /usr/local/bin/fastqc ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R2.paired.fastq.gz
+        /usr/local/bin/fastqc ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R2.paired.fastq.gz
 
-    """
-}
+        """
+    }
 
-process Aligning {
-     container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
-    //container "quay.io/biocontainers/bwa:0.7.17--hed695b0_7	"
+    // Align fastq files to Wuhan refseq using bbmap
+    process Aligning {
+        container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
+        //container "quay.io/biocontainers/bwa:0.7.17--hed695b0_7	"
 
-    // Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
+        // Retry on fail at most three times 
+        errorStrategy 'retry'
+        maxRetries 3
 
-    input: 
-      tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch
-      file REFERENCE_FASTA
-    output:
-      tuple val(base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
-      tuple val (base), file("*") into Dump_ch
+        input: 
+        tuple val(base), file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch
+        file REFERENCE_FASTA
+        output:
+        tuple val(base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
+        tuple val (base), file("*") into Dump_ch
 
-    script:
-    """
-    #!/bin/bash
+        script:
+        """
+        #!/bin/bash
 
-    cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
-    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
-    reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
+        cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
+        /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
+        reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
 
-    cp ${base}_summary.csv ${base}_summary2.csv
-    printf ",\$reads_mapped" >> ${base}_summary2.csv
+        cp ${base}_summary.csv ${base}_summary2.csv
+        printf ",\$reads_mapped" >> ${base}_summary2.csv
 
-    """
+        """
 
-    // bwa?
-    // script:
-    // """
-    // #!/bin/bash
-    // bwa mem $workflow.projectDir/NC_045512.2.fasta ${base}.R1.paired.fastq.gz ${base}.R2.paired.fastq.gz > aln.sam
-    // """
-}
+        // bwa?
+        // script:
+        // """
+        // #!/bin/bash
+        // bwa mem $workflow.projectDir/NC_045512.2.fasta ${base}.R1.paired.fastq.gz ${base}.R2.paired.fastq.gz > aln.sam
+        // """
+    }
 
-// Single end first three steps
+//// 
+// Single end trimming, fastqc, aligning
+////
 } else { 
+    // Looks for gzipped files, assumes all separate samples
     input_read_ch = Channel
         .fromPath("${params.INPUT}*.gz")
         //.map { it -> [ file(it)]}
         .map { it -> file(it)}
-    
-process Trimming_SE { 
-    container "quay.io/biocontainers/trimmomatic:0.35--6"
 
-	// Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
+    // Use Trimmomatic to trim files, above Q20, minlen of 75
+    // Initialize summary file and input trimming stats into summary file
+    process Trimming_SE { 
+        container "quay.io/biocontainers/trimmomatic:0.35--6"
 
-    input:
-      file R1 from input_read_ch
-      file ADAPTERS
-    output: 
-      tuple env(base),file("*.trimmed.fastq.gz"),file("*summary.csv") into Trim_out_ch_SE
-      tuple env(base),file("*.trimmed.fastq.gz") into Trim_out_ch2_SE
+        // Retry on fail at most three times 
+        errorStrategy 'retry'
+        maxRetries 3
 
-    publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*fastq*'
+        input:
+        file R1 from input_read_ch
+        file ADAPTERS
+        output: 
+        tuple env(base),file("*.trimmed.fastq.gz"),file("*summary.csv") into Trim_out_ch_SE
+        tuple env(base),file("*.trimmed.fastq.gz") into Trim_out_ch2_SE
 
-    script:
-    """
-    #!/bin/bash
+        publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*fastq*'
 
-    base=`basename ${R1} ".fastq.gz"`
+        script:
+        """
+        #!/bin/bash
 
-    echo \$base
+        base=`basename ${R1} ".fastq.gz"`
 
-    trimmomatic SE -threads ${task.cpus} ${R1} \$base.trimmed.fastq.gz \
-    ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:75
+        echo \$base
 
-    num_untrimmed=\$((\$(gunzip -c ${R1} | wc -l)/4))
-    num_trimmed=\$((\$(gunzip -c \$base'.trimmed.fastq.gz' | wc -l)/4))
-    
-    percent_trimmed=\$((100-\$((100*num_trimmed/num_untrimmed))))
-    
-    echo Sample_Name,Raw_Reads,Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Lowest_Spike_Cov,Percent_N > \$base'_summary.csv'
-    printf "\$base,\$num_untrimmed,\$num_trimmed,\$percent_trimmed" >> \$base'_summary.csv'
-    
-    ls -latr
-    """
+        trimmomatic SE -threads ${task.cpus} ${R1} \$base.trimmed.fastq.gz \
+        ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:75
+
+        num_untrimmed=\$((\$(gunzip -c ${R1} | wc -l)/4))
+        num_trimmed=\$((\$(gunzip -c \$base'.trimmed.fastq.gz' | wc -l)/4))
+        
+        percent_trimmed=\$((100-\$((100*num_trimmed/num_untrimmed))))
+        
+        echo Sample_Name,Raw_Reads,Trimmed_Reads,Percent_Trimmed,Mapped_Reads,Clipped_Mapped_Reads,Mean_Coverage,Spike_Mean_Coverage,Spike_100X_Cov_Percentage,Spike_200X_Cov_Percentage,Lowest_Spike_Cov,Percent_N > \$base'_summary.csv'
+        printf "\$base,\$num_untrimmed,\$num_trimmed,\$percent_trimmed" >> \$base'_summary.csv'
+        
+        ls -latr
+        """
+    }
+
+    // Fastqc our fastq files for quick sanity check
+    process fastQc_SE {
+        container "quay.io/biocontainers/fastqc:0.11.9--0"
+
+        // Retry on fail at most three times 
+        errorStrategy 'retry'
+        maxRetries 3
+
+        input:
+        tuple val(base),file("${base}.trimmed.fastq.gz") from Trim_out_ch2_SE
+        output: 
+        file("*fastqc*") into Fastqc_ch 
+
+        publishDir "${params.OUTDIR}fastqc", mode: 'copy'
+
+        script:
+        """
+        #!/bin/bash
+
+        /usr/local/bin/fastqc ${base}.trimmed.fastq.gz
+        """
+    }
+
+    // Align fastq files to Wuhan refseq using bbmap
+    process Aligning_SE {
+        container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
+        //container "quay.io/biocontainers/bwa:0.7.17--hed695b0_7	"
+
+        // Retry on fail at most three times 
+        errorStrategy 'retry'
+        maxRetries 3
+
+        input: 
+        tuple val(base),file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch_SE
+        file REFERENCE_FASTA
+        output:
+        tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
+
+        cpus 4 
+        memory '6 GB'
+
+        script:
+        """
+        #!/bin/bash
+
+        base=`basename ${base}.trimmed.fastq.gz ".trimmed.fastq.gz"`
+        /usr/local/bin/bbmap.sh in1="\$base".trimmed.fastq.gz  outm="\$base".bam ref=${REFERENCE_FASTA} -Xmx6g sam=1.3 -Xmx6g > bbmap_out.txt 2>&1
+        reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
+        
+        cp ${base}_summary.csv ${base}_summary2.csv
+        printf ",\$reads_mapped" >> ${base}_summary2.csv
+
+        """
+    }
 }
 
-process fastQc_SE {
-    container "quay.io/biocontainers/fastqc:0.11.9--0"
-
-	// Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
-
-    input:
-      tuple val(base),file("${base}.trimmed.fastq.gz") from Trim_out_ch2_SE
-    output: 
-      file("*fastqc*") into Fastqc_ch 
-
-    publishDir "${params.OUTDIR}fastqc", mode: 'copy'
-
-    script:
-    """
-    #!/bin/bash
-
-    /usr/local/bin/fastqc ${base}.trimmed.fastq.gz
-    """
-}
-
-process Aligning_SE {
-     container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
-    //container "quay.io/biocontainers/bwa:0.7.17--hed695b0_7	"
-
-    // Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
-
-    input: 
-      tuple val(base),file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv") from Trim_out_ch_SE
-      file REFERENCE_FASTA
-    output:
-      tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") into Aligned_bam_ch
-
-    cpus 4 
-    memory '6 GB'
-
-    script:
-    """
-    #!/bin/bash
-
-    base=`basename ${base}.trimmed.fastq.gz ".trimmed.fastq.gz"`
-    /usr/local/bin/bbmap.sh in1="\$base".trimmed.fastq.gz  outm="\$base".bam ref=${REFERENCE_FASTA} -Xmx6g sam=1.3 -Xmx6g > bbmap_out.txt 2>&1
-    reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
-    
-    cp ${base}_summary.csv ${base}_summary2.csv
-    printf ",\$reads_mapped" >> ${base}_summary2.csv
-
-    """
-}
-}
-
+////
+// Primerclip options for Swift runs
+////
 if(params.NO_CLIPPING == false) {
+    // Sort sam for input into primerclip
     process NameSorting { 
     container "quay.io/biocontainers/samtools:1.3--h0592bc0_3"
 
@@ -338,63 +361,65 @@ if(params.NO_CLIPPING == false) {
     samtools sort -@ ${task.cpus} -n -O sam ${base}.bam > ${base}.sorted.sam
 
     """
-}
+    }
 
-process Clipping { 
-    container "quay.io/greninger-lab/swift-pipeline:latest"
+    // Use primerclip to trim Swift primers
+    process Clipping { 
+        container "quay.io/greninger-lab/swift-pipeline:latest"
 
-	// Retry on fail at most three times 
-    errorStrategy 'retry'
-    maxRetries 3
+        // Retry on fail at most three times 
+        errorStrategy 'retry'
+        maxRetries 3
 
-    input:
-      tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") from Sorted_sam_ch
-      file MASTERFILE
-    output:
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
-      tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch3
+        input:
+        tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") from Sorted_sam_ch
+        file MASTERFILE
+        output:
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) into Clipped_bam_ch
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch2
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) into Clipped_bam_ch3
 
-    publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
-    publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary3.csv'
+        publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
+        publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary3.csv'
 
-    script:
-        """
-        #!/bin/bash
-        ls -latr
-        /./root/.local/bin/primerclip -s ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
-        #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
-        #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
-        #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
-        /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
-        /usr/local/miniconda/bin/samtools index ${base}.clipped.bam
-        clipped_reads=\$(/usr/local/miniconda/bin/samtools flagstat ${base}.clipped.bam | grep "mapped (" | awk '{print \$1}')
-        echo "clipped reads: \$clipped_reads"
-        /usr/local/miniconda/bin/bedtools genomecov -d -ibam ${base}.clipped.bam > ${base}_coverage.txt
-        meancoverage=\$(cat ${base}_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
-        bamsize=\$((\$(wc -c ${base}.clipped.bam | awk '{print \$1'})+0))
-        echo "bamsize: \$bamsize"
-        if (( \$bamsize > 92 ))
-        then
-            # Spike protein coverage
-            awk '\$2 ~ /21563/,\$2 ~ /25384/' ${base}_coverage.txt > ${base}_spike_coverage.txt
-            avgcoverage=\$(cat ${base}_spike_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
-            proteinlength=\$((25384-21563+1))
-            cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
-            cov200=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=200' | wc -l)/3822))
-            mincov=\$(sort -nk 3 ${base}_spike_coverage.txt | head -n 1 | cut -f3)
-        else
-            avgcoverage=0
-            cov100=0
-            cov200=0
-            mincov=0
-        fi
-        
-        cp ${base}_summary2.csv ${base}_summary3.csv
-        printf ",\$clipped_reads,\$meancoverage,\$avgcoverage,\$cov100,\$cov200,\$mincov" >> ${base}_summary3.csv
-        """
-    } 
+        script:
+            """
+            #!/bin/bash
+            ls -latr
+            /./root/.local/bin/primerclip -s ${MASTERFILE} ${base}.sorted.sam ${base}.clipped.sam
+            #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -n -O sam ${base}.clipped.sam > ${base}.clipped.sorted.sam
+            #/usr/local/miniconda/bin/samtools view -@ ${task.cpus} -Sb ${base}.clipped.sorted.sam > ${base}.clipped.unsorted.bam
+            #/usr/local/miniconda/bin/samtools sort -@ ${task.cpus} -o ${base}.clipped.unsorted.bam ${base}.clipped.bam
+            /usr/local/miniconda/bin/samtools sort -@ ${task.cpus} ${base}.clipped.sam -o ${base}.clipped.bam
+            /usr/local/miniconda/bin/samtools index ${base}.clipped.bam
+            clipped_reads=\$(/usr/local/miniconda/bin/samtools flagstat ${base}.clipped.bam | grep "mapped (" | awk '{print \$1}')
+            echo "clipped reads: \$clipped_reads"
+            /usr/local/miniconda/bin/bedtools genomecov -d -ibam ${base}.clipped.bam > ${base}_coverage.txt
+            meancoverage=\$(cat ${base}_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
+            bamsize=\$((\$(wc -c ${base}.clipped.bam | awk '{print \$1'})+0))
+            echo "bamsize: \$bamsize"
+            if (( \$bamsize > 92 ))
+            then
+                # Spike protein coverage
+                awk '\$2 ~ /21563/,\$2 ~ /25384/' ${base}_coverage.txt > ${base}_spike_coverage.txt
+                avgcoverage=\$(cat ${base}_spike_coverage.txt | awk '{sum+=\$3} END { print sum/NR}')
+                proteinlength=\$((25384-21563+1))
+                cov100=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=100' | wc -l)/3822))
+                cov200=\$((100*\$(cat ${base}_spike_coverage.txt | awk '\$3>=200' | wc -l)/3822))
+                mincov=\$(sort -nk 3 ${base}_spike_coverage.txt | head -n 1 | cut -f3)
+            else
+                avgcoverage=0
+                cov100=0
+                cov200=0
+                mincov=0
+            fi
+            
+            cp ${base}_summary2.csv ${base}_summary3.csv
+            printf ",\$clipped_reads,\$meancoverage,\$avgcoverage,\$cov100,\$cov200,\$mincov" >> ${base}_summary3.csv
+            """
+        } 
 } else {
+    // Skip primerclip, just sort the bam
     process BamSorting { 
     container "quay.io/greninger-lab/swift-pipeline:latest"
 
@@ -445,6 +470,7 @@ process Clipping {
 
 }
 
+// Generate final consensus from pileup from bam.
 process generateConsensus {
     container "quay.io/greninger-lab/swift-pipeline:latest"
 
@@ -496,31 +522,47 @@ process generateConsensus {
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
                 !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -A -m -Oz - > tmp.{}.vcf.gz"
         
+        # Concatenate parallelized vcfs back together
         cat *.vcf.gz > \${R1}_catted.vcf.gz
+
+        # Index and call variants from vcf
         /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
         gunzip \${R1}_catted.vcf.gz
         cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre_bcftools.vcf
         
+        # Make sure variants are majority variants for consensus calling
         /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre_bcftools.vcf -o \${R1}_pre2.vcf
         /usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
+
+        # Index and generate consensus from vcf with majority variants
         /usr/local/miniconda/bin/bgzip \${R1}.vcf
         /usr/local/miniconda/bin/tabix \${R1}.vcf.gz 
         cat !{REFERENCE_FASTA} | /usr/local/miniconda/bin/bcftools consensus \${R1}.vcf.gz > \${R1}.consensus.fa
+
+        # Create coverage file from bam for whole genome, then pipe anything that has less than 6 coverage to bed file,
+        # to be masked later
         /usr/local/miniconda/bin/bedtools genomecov \\
             -bga \\
             -ibam !{BAMFILE} \\
             -g !{REFERENCE_FASTA} \\
             | awk '\$4 < 6' | /usr/local/miniconda/bin/bedtools merge > \${R1}.mask.bed
+        # Get rid of anything outside of the genome we care about, to prevent some sgrnas from screwing with masking
         awk '{ if(\$3 > 200 && \$2 < 29742) {print}}' \${R1}.mask.bed > a.tmp && mv a.tmp \${R1}.mask.bed
+
+        # Mask refseq fasta for low coverage areas based on bed file
         /usr/local/miniconda/bin/bedtools maskfasta \\
             -fi !{REFERENCE_FASTA} \\
             -bed \${R1}.mask.bed \\
             -fo ref.mask.fasta
+        
+        # Align to Wuhan refseq and unwrap fasta
         cat ref.mask.fasta \${R1}.consensus.fa > align_input.fasta
         /usr/local/miniconda/bin/mafft --auto --thread !{task.cpus} align_input.fasta > repositioned.fasta
         awk '/^>/ { print (NR==1 ? "" : RS) $0; next } { printf "%s", $0 } END { printf RS }' repositioned.fasta > repositioned_unwrap.fasta
         
+        # Trim ends and aligns masking of refseq to our consensus
         python3 !{TRIM_ENDS} \${R1}
+
         # Find percent ns, doesn't work, fix later in python script
         num_bases=$(grep -v ">" \${R1}_swift.fasta | wc | awk '{print $3-$1}')
         num_ns=$(grep -v ">" \${R1}_swift.fasta | awk -F"n" '{print NF-1}')
@@ -533,6 +575,7 @@ process generateConsensus {
         #/usr/local/miniconda/bin/samtools view !{BAMFILE} -@ !{task.cpus} | awk -F: '$12 < 600' > \${R1}'.clipped.cleaned.bam'
     else
        echo "Empty bam detected. Generating empty consensus fasta file..."
+       # Generate empty stats for empty bam
        printf '>!{base}\n' > \${R1}_swift.fasta
        printf 'n%.0s' {1..29539} >> \${R1}_swift.fasta
        percent_n=100
@@ -546,6 +589,7 @@ process generateConsensus {
     cat \${R1}_summary.csv | tr -d "[:blank:]" > a.tmp
     mv a.tmp \${R1}_summary.csv
 
+    # Correctly calculates %ns and cleans up the summary file.
     if [[ !{bamsize} > 92 ]]
     then
         python3 !{FIX_COVERAGE} \${R1}
@@ -590,6 +634,7 @@ process generateConsensus {
     //     """
     // }
 
+    // Grab variants from vcf and output into standard format
     process annotateVariants {
         errorStrategy 'retry'
         maxRetries 3
