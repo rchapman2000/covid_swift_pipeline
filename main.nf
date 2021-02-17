@@ -213,7 +213,7 @@ if(params.SINGLE_END == false){
         #!/bin/bash
 
         cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
-        /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} -Xmx6g > bbmap_out.txt 2>&1
+        /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} local=true -Xmx6g > bbmap_out.txt 2>&1
         reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
 
         cp ${base}_summary.csv ${base}_summary2.csv
@@ -326,7 +326,7 @@ if(params.SINGLE_END == false){
         #!/bin/bash
 
         base=`basename ${base}.trimmed.fastq.gz ".trimmed.fastq.gz"`
-        /usr/local/bin/bbmap.sh in1="\$base".trimmed.fastq.gz  outm="\$base".bam ref=${REFERENCE_FASTA} -Xmx6g sam=1.3 -Xmx6g > bbmap_out.txt 2>&1
+        /usr/local/bin/bbmap.sh in1="\$base".trimmed.fastq.gz  outm="\$base".bam ref=${REFERENCE_FASTA} local=true -Xmx6g sam=1.3 -Xmx6g > bbmap_out.txt 2>&1
         reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
         
         cp ${base}_summary.csv ${base}_summary2.csv
@@ -517,6 +517,7 @@ process generateConsensus {
                 "/usr/local/miniconda/bin/bcftools mpileup \\
                     -f !{REFERENCE_FASTA} -r {} \\
                     --count-orphans \\
+                    --no-BAQ \\
                     --max-depth 50000 \\
                     --max-idepth 500000 \\
                     --annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR \\
