@@ -13,8 +13,9 @@ process Trimming {
     output: 
         tuple val(base), file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv") //into Trim_out_ch
         tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") //into Trim_out_ch2
+        tuple val(base), file("${base}.trimmed.fastq.gz") //into Trim_out_ch3
 
-    publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*fastq*'
+    publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*.trimmed.fastq*'
 
     script:
     """
@@ -87,8 +88,9 @@ process Trimming_SE {
     output: 
         tuple env(base),file("*.trimmed.fastq.gz"),file("*summary.csv") //into Trim_out_ch_SE
         tuple env(base),file("*.trimmed.fastq.gz") //into Trim_out_ch2_SE
+        tuple env(base),file("*.trimmed.fastq.gz") //into Trim_out_ch3_SE
 
-    publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*fastq*'
+    publishDir "${params.OUTDIR}trimmed_fastqs", mode: 'copy',pattern:'*.trimmed.fastq*'
 
     script:
     """
@@ -166,28 +168,54 @@ process Aligning {
     """
 }
 
+// Optional step for counting sgRNAs
+process CountSubgenomicRNAs {
+    container "quay.io/thanhleviet/bbtools:latest"
+
+    // Retry on fail at most three times
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input: 
+        tuple val(base), file("${base}.trimmed.fastq.gz") //from Trim_out_ch3
+        file SGRNAS 
+    output:
+        file("*stats*")
+        file("*_sgrnas.fastq.gz")
+    
+    publishDir "${params.OUTDIR}sgRNAs", mode: 'copy'
+
+    script:
+    """
+    #!/bin/bash
+
+    bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt
+
+    """
+}
+
 
 // Sort sam for input into primerclip
 process NameSorting { 
-container "quay.io/biocontainers/samtools:1.3--h0592bc0_3"
+    container "quay.io/biocontainers/samtools:1.3--h0592bc0_3"
 
-// Retry on fail at most three times 
-errorStrategy 'retry'
-maxRetries 3
+    // Retry on fail at most three times 
+    errorStrategy 'retry'
+    maxRetries 3
 
-input:
-    tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") //from Aligned_bam_ch
-output:
-    tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") //into Sorted_sam_ch
+    input:
+        tuple val (base), file("${base}.bam"),file("${base}_summary2.csv") //from Aligned_bam_ch
+    output:
+        tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") //into Sorted_sam_ch
 
-publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary.csv'
+    publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary.csv'
 
-script:
-"""
-#!/bin/bash
-samtools sort -@ ${task.cpus} -n -O sam ${base}.bam > ${base}.sorted.sam
+    script:
+    """
+    #!/bin/bash
+    samtools sort -@ ${task.cpus} -n -O sam ${base}.bam > ${base}.sorted.sam
 
-"""
+    """
 }
 
 // Use primerclip to trim Swift primers
@@ -199,12 +227,12 @@ process Clipping {
     maxRetries 3
 
     input:
-    tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") //from Sorted_sam_ch
-    file MASTERFILE
+        tuple val (base), file("${base}.sorted.sam"),file("${base}_summary2.csv") //from Sorted_sam_ch
+        file MASTERFILE
     output:
-    tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) //into Clipped_bam_ch
-    tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) //into Clipped_bam_ch2
-    tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) //into Clipped_bam_ch3
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),file("${base}_summary3.csv"),env(bamsize) //into Clipped_bam_ch
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) //into Clipped_bam_ch2
+        tuple val (base), file("${base}.clipped.bam"), file("${base}.clipped.bam.bai"),env(bamsize) //into Clipped_bam_ch3
 
     publishDir params.OUTDIR, mode: 'copy', pattern: '*.clipped.bam'
     publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary3.csv'

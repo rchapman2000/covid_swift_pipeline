@@ -89,6 +89,12 @@ else {
     MASTERFILE = file("${baseDir}/sarscov2_masterfile.txt")
     println("Using Swift V1 primerset [default]...")
 }
+// Print when using SGRNA_COUNT
+if (params.SGRNA_COUNT == false) {
+    println("--SGRNA_COUNT not specified, skipping counting sgRNAs...")
+} else {
+    println("--SGRNA_COUNT specified. Will count sgRNAs...")
+}
 
 // Setting up files 
 REFERENCE_FASTA = file("${baseDir}/NC_045512.2.fasta")
@@ -117,6 +123,7 @@ include Fastqc from './Modules.nf'
 include Aligning from './Modules.nf'
 include Trimming_SE from './Modules.nf' 
 include Fastqc_SE from './Modules.nf'
+include CountSubgenomicRNAs from './Modules.nf'
 include NameSorting from './Modules.nf'
 include Clipping from './Modules.nf'
 include BamSorting from './Modules.nf'
@@ -160,6 +167,13 @@ workflow {
             Trimming.out[0],
             REFERENCE_FASTA
         )
+        // Optional step for counting sgRNAs 
+        if (params.SGRNA_COUNT != false) {
+            CountSubgenomicRNAs (
+                Trimming.out[2],
+                SGRNAS
+            )
+        }
     } else {
     // Single end first few steps
         Trimming_SE (
@@ -173,6 +187,13 @@ workflow {
             Trimming_SE.out[0],
             REFERENCE_FASTA
         )
+        // Optional step for counting sgRNAs 
+        if (params.SGRNA_COUNT != false) {
+            CountSubgenomicRNAs (
+                Trimming_SE.out[2],
+                SGRNAS
+            )
+        }
     }
 
     // Primerclip options for Swift runs
@@ -181,7 +202,8 @@ workflow {
             Aligning.out[0]
         )
         Clipping (
-            NameSorting.out[0]
+            NameSorting.out[0],
+            MASTERFILE
         )
         GenerateConsensus (
             Clipping.out[0],
