@@ -118,17 +118,17 @@ CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
 SGRNAS = file("${baseDir}/sgRNAs_60.fasta")
 
 // Import processes 
-include Trimming from './modules.nf'
-include Fastqc from './modules.nf'
-include Aligning from './modules.nf'
-include Trimming_SE from './modules.nf' 
-include Fastqc_SE from './modules.nf'
-include CountSubgenomicRNAs from './modules.nf'
-include NameSorting from './modules.nf'
-include Clipping from './modules.nf'
-include BamSorting from './modules.nf'
-include GenerateConsensus from './modules.nf'
-include AnnotateVariants from './modules.nf'
+include { Trimming } from './modules.nf'
+include { Fastqc } from './modules.nf'
+include { Aligning } from './modules.nf'
+include { Trimming_SE } from './modules.nf' 
+include { Fastqc_SE } from './modules.nf'
+include { CountSubgenomicRNAs } from './modules.nf'
+include { NameSorting } from './modules.nf'
+include { Clipping } from './modules.nf'
+include { BamSorting } from './modules.nf'
+include { GenerateConsensus } from './modules.nf'
+include { AnnotateVariants } from './modules.nf'
 
 // Import reads depending on single end vs. paired end
 if(params.SINGLE_END == false) {
