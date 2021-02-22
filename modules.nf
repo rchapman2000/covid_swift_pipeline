@@ -189,7 +189,7 @@ process CountSubgenomicRNAs {
     """
     #!/bin/bash
 
-    bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt k=50 qhdist=2 -Xmx12g
+    bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt k=26 -Xmx12g
 
     """
 }
@@ -288,6 +288,7 @@ process BamSorting {
       tuple val (base), file("${base}.sorted.bam"),file("${base}.sorted.bam.bai"),file("${base}_summary3.csv"),env(bamsize) //into Clipped_bam_ch
     
     publishDir "${params.OUTDIR}inprogress_summary", mode: 'copy', pattern: '*summary.csv'
+    publishDir params.OUTDIR, mode: 'copy', pattern: '*.sorted.bam'
 
     script:
     """
