@@ -115,7 +115,7 @@ RIBOSOMAL_SLIPPAGE = file("${baseDir}/annotation/ribosomal_slippage.py")
 PROTEINS = file("${baseDir}/annotation/proteins.csv")
 CORRECT_AF = file("${baseDir}/annotation/correct_AF.py")
 CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
-SGRNAS = file("${baseDir}/sgRNAs_31bp.fasta")
+SGRNAS = file("${baseDir}/sgRNAs_31.fasta")
 
 // Import processes 
 include { Trimming } from './modules.nf'
