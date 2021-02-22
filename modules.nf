@@ -189,7 +189,7 @@ process CountSubgenomicRNAs {
     """
     #!/bin/bash
 
-    bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt k=31 -Xmx12g
+    bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt k=50 qhdist=2 -Xmx12g
 
     """
 }
