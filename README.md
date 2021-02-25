@@ -13,6 +13,9 @@ This pipeline takes gzipped fastq files and outputs .bam files aligned to NC_045
 | --INPUT  | Input folder where gzipped fastqs are located. For current  directory, `./` can be used.
 | --OUTDIR | Output folder where .bams and consensus fastas will be piped into.
 | --SINGLE_END | Flag to indicate input reads are single end. By default this pipeline expects paired end reads.
+| --NO_CLIPPING | Skip primerclip option for shotgun/CovidSeq runs.
+| --SGRNA_COUNT | Add extra step to count sgRNAs.
+| --VARIANTS | Specify which Swift primerset to use. Default: v1. 
 | -resume  | nextflow will pick up where it left off if the previous command was interrupted for some reason.
 | -with-docker ubuntu:16.04 | Runs command with Ubuntu docker.
 | -with-trace | Outputs a trace.txt that shows which processes end up in which work/ folders. 
