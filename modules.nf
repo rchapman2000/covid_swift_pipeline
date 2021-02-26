@@ -188,8 +188,32 @@ process CountSubgenomicRNAs {
     script:
     """
     #!/bin/bash
-
     bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt k=40 qhdist=1 -Xmx12g
+
+    """
+}
+
+// Optional step for counting sgRNAs
+process MapSubgenomics {
+    container "quay.io/thanhleviet/bbtools:latest"
+
+    // Retry on fail at most three times
+    errorStrategy 'retry'
+    maxRetries 3
+
+    input: 
+        tuple val(base), file("${base}_sgrnas.fastq.gz") //from CountSubgenomics
+        file FULL_SGRNAS 
+    output:
+        file("${base}_sgrnas_mapped.bam")
+    
+    publishDir "${params.OUTDIR}sgRNAs", mode: 'copy', pattern: '*.bam'
+
+    script:
+    """
+    #!/bin/bash
+
+    bbmap.sh in=${base}_sgrnas.fastq.gz outm=${base}_sgrnas_mapped.bam ref=${FULL_SGRNAS} -Xmx6g 2>&1
 
     """
 }
