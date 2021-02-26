@@ -181,7 +181,7 @@ process CountSubgenomicRNAs {
         file SGRNAS 
     output:
         file("*stats*")
-        file("*_sgrnas.fastq.gz")
+        tuple val(base),file("*_sgrnas.fastq.gz")
     
     publishDir "${params.OUTDIR}sgRNAs", mode: 'copy'
 
