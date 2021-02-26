@@ -175,6 +175,10 @@ workflow {
                 Trimming.out[2],
                 SGRNAS
             )
+            MapSubgenomics (
+                CountSubgenomicRNAs.out[1],
+                FULL_SGRNAS
+            )
         }
     } else {
     // Single end first few steps
