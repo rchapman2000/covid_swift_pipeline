@@ -170,7 +170,7 @@ process Aligning {
 
 // Optional step for counting sgRNAs
 process CountSubgenomicRNAs {
-    container "quay.io/thanhleviet/bbtools:latest"
+    container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
 
     // Retry on fail at most three times
     errorStrategy 'retry'
@@ -188,14 +188,14 @@ process CountSubgenomicRNAs {
     script:
     """
     #!/bin/bash
-    /opt/bbtools/bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt k=40 qhdist=1 -Xmx6g
+    /usr/local/bin/bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt k=40 qhdist=1 -Xmx6g
 
     """
 }
 
 // Optional step for counting sgRNAs
 process MapSubgenomics {
-    container "quay.io/thanhleviet/bbtools:latest"
+    container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
 
     // Retry on fail at most three times
     errorStrategy 'retry'
@@ -213,7 +213,7 @@ process MapSubgenomics {
     """
     #!/bin/bash
 
-    /opt/bbtools/bbmap.sh in=${base}_sgrnas.fastq.gz outm=${base}_sgrnas_mapped.bam ref=${FULL_SGRNAS} -Xmx6g 2>&1
+    /usr/local/bin/bbmap.sh in=${base}_sgrnas.fastq.gz outm=${base}_sgrnas_mapped.bam ref=${FULL_SGRNAS} -Xmx6g 2>&1
 
     """
 }
