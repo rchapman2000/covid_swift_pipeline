@@ -188,7 +188,7 @@ process CountSubgenomicRNAs {
     script:
     """
     #!/bin/bash
-    bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt k=40 qhdist=1 -Xmx6g
+    /opt/bbtools/bbduk.sh in=${base}.trimmed.fastq.gz outm=${base}_sgrnas.fastq.gz ref=${SGRNAS} stats=${base}_sgrnas_stats.txt refstats=${base}_sgrnas_refstats.txt k=40 qhdist=1 -Xmx6g
 
     """
 }
@@ -213,7 +213,7 @@ process MapSubgenomics {
     """
     #!/bin/bash
 
-    bbmap.sh in=${base}_sgrnas.fastq.gz outm=${base}_sgrnas_mapped.bam ref=${FULL_SGRNAS} -Xmx6g 2>&1
+    /opt/bbtools/bbmap.sh in=${base}_sgrnas.fastq.gz outm=${base}_sgrnas_mapped.bam ref=${FULL_SGRNAS} -Xmx6g 2>&1
 
     """
 }
