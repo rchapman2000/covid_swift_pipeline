@@ -29,6 +29,7 @@ def helpMessage() {
                         paired-end reads.
         --NO_CLIPPING   Skip primerclip option.
         --SGRNA_COUNT   Add extra step to count sgRNAs. 
+        --MIN_LEN       Set minimum length for Trimmomatic. Default is 75.
 
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
@@ -58,6 +59,7 @@ params.SINGLE_END = false
 params.PRIMERS = false
 params.SGRNA_COUNT = false
 params.NO_CLIPPING = false
+params.MIN_LEN = 75
 
 // Checking for argument validity
 // Throw error if --INPUT not set
@@ -160,7 +162,8 @@ workflow {
     if(params.SINGLE_END == false) {
         Trimming (
             input_read_ch, 
-            ADAPTERS
+            ADAPTERS,
+            params.MIN_LEN
         )
         Fastqc (
             Trimming.out[1]
@@ -184,7 +187,8 @@ workflow {
     // Single end first few steps
         Trimming_SE (
             input_read_ch,
-            ADAPTERS
+            ADAPTERS,
+            params.MIN_LEN
         )
         Fastqc_SE (
             Trimming_SE.out[1]

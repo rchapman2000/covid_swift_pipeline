@@ -10,6 +10,7 @@ process Trimming {
     input:
         tuple val(base), file(R1), file(R2) // from input_read_ch
         file ADAPTERS
+        val MINLEN
     output: 
         tuple val(base), file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv") //into Trim_out_ch
         tuple val(base), file(R1),file(R2),file("${base}.R1.paired.fastq.gz"), file("${base}.R2.paired.fastq.gz"),file("${base}.R1.unpaired.fastq.gz"), file("${base}.R2.unpaired.fastq.gz") //into Trim_out_ch2
@@ -22,7 +23,7 @@ process Trimming {
     #!/bin/bash
 
     trimmomatic PE -threads ${task.cpus} ${R1} ${R2} ${base}.R1.paired.fastq.gz ${base}.R1.unpaired.fastq.gz ${base}.R2.paired.fastq.gz ${base}.R2.unpaired.fastq.gz \
-    ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:75
+    ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:${MINLEN}
 
     num_r1_untrimmed=\$(gunzip -c ${R1} | wc -l)
     num_r2_untrimmed=\$(gunzip -c ${R2} | wc -l)
@@ -85,6 +86,7 @@ process Trimming_SE {
     input:
         file R1 //from input_read_ch
         file ADAPTERS
+        val MINLEN
     output: 
         tuple env(base),file("*.trimmed.fastq.gz"),file("*summary.csv") //into Trim_out_ch_SE
         tuple env(base),file("*.trimmed.fastq.gz") //into Trim_out_ch2_SE
@@ -101,7 +103,7 @@ process Trimming_SE {
     echo \$base
 
     trimmomatic SE -threads ${task.cpus} ${R1} \$base.trimmed.fastq.gz \
-    ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:75
+    ILLUMINACLIP:${ADAPTERS}:2:30:10:1:true LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:${MINLEN}
 
     num_untrimmed=\$((\$(gunzip -c ${R1} | wc -l)/4))
     num_trimmed=\$((\$(gunzip -c \$base'.trimmed.fastq.gz' | wc -l)/4))
