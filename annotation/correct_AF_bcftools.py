@@ -59,12 +59,14 @@ if __name__ == '__main__':
                 allele_alt = 0
             else:
                 allele_alt = int(ad.split(",")[1])
+            
+            fixed_depth = int(dp4.split(",")[0]) + int(dp4.split(",")[1]) + int(dp4.split(",")[2]) + int(dp4.split(",")[3])
 
             if (allele_ref + allele_alt) > 0 and allele_alt > 0:
                 if("IMF" in line):
                     af = float(line.split("IMF=")[1].split(";")[0])
                 else:
-                    af = allele_alt / (allele_ref + allele_alt)
+                    af = allele_alt / depth
                 
                 type = line.split("\t")[1]
 
@@ -74,7 +76,7 @@ if __name__ == '__main__':
                     nuc_alt = (line_parts[7])
                     fixed_aa_change = line_parts[2].split(":p.")[1].split(",")[0]
                     fixed_protein = line_parts[2].split(":")[1] 
-                    fixed_depth = int(allele_ref + allele_alt)
+                    #fixed_depth = int(allele_ref + allele_alt)
                     fixed_nuc_change = line_parts[2].split(":c.")[1].split(":")[0]
                     # if(line_parts[12].rstrip()=="-"):
                     #     mat_peptide = ""
