@@ -28,8 +28,8 @@ def translate(seq):
         'GGA':'G', 'GGC':'G', 'GGG':'G', 'GGT':'G', 
         'TCA':'S', 'TCC':'S', 'TCG':'S', 'TCT':'S', 
         'TTC':'F', 'TTT':'F', 'TTA':'L', 'TTG':'L', 
-        'TAC':'Y', 'TAT':'Y', 'TAA':'_', 'TAG':'_', 
-        'TGC':'C', 'TGT':'C', 'TGA':'_', 'TGG':'W', 
+        'TAC':'Y', 'TAT':'Y', 'TAA':'X', 'TAG':'X', 
+        'TGC':'C', 'TGT':'C', 'TGA':'X', 'TGG':'W', 
     } 
     protein ="" 
     if len(seq)%3 == 0: 
@@ -148,8 +148,13 @@ if __name__ == '__main__':
                         aa_start_pos = fixed_aa_change[1:-1]
                         nuc_change = nuc_ref + line_parts[4] + nuc_alt
 
+                        if(split_amino_ref=="X"):
+                            type = "stoploss"
+                        else:
+                            type = line_parts[1]
+
                         print(sample_name)
                         print(fixed_protein)
                         print(line_parts[4])
-                        #                SAMPLE_ID              GENE                  GENPOS                   AAPOS                      AAREF                         AASUB           NUCCHANGE             AAFREQ               DEPTH                                                                   TYPE
-                        fixed_file.write(sample_name + "," + str(fixed_protein) + "," + line_parts[4] + "," + str(aa_start_pos) + "," + split_amino_ref + "," + split_amino_alt + "," +  nuc_change + "," + str(af) + "," + str(fixed_depth) + "," + str(allele_ref) + "," + str(allele_alt) + "," + line_parts[1] + "," + nuc_num  + "\n")#+ "," + mat_peptide + "," + mat_peptide_nuc_change + "," + mat_peptide_aa_change + "\n") 
+                        #                SAMPLE_ID              GENE                  GENPOS                   AAPOS                      AAREF                         AASUB           NUCCHANGE             AAFREQ               DEPTH                                                             TYPE
+                        fixed_file.write(sample_name + "," + str(fixed_protein) + "," + line_parts[4] + "," + str(aa_start_pos) + "," + split_amino_ref + "," + split_amino_alt + "," +  nuc_change + "," + str(af) + "," + str(fixed_depth) + "," + str(allele_ref) + "," + str(allele_alt) + "," + type + "," + nuc_num  + "\n")#+ "," + mat_peptide + "," + mat_peptide_nuc_change + "," + mat_peptide_aa_change + "\n") 
