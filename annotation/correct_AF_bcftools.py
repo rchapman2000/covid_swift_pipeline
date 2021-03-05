@@ -66,7 +66,7 @@ if __name__ == '__main__':
                 if("IMF" in line):
                     af = float(line.split("IMF=")[1].split(";")[0])
                 else:
-                    af = allele_alt / depth
+                    af = allele_alt / fixed_depth
                 
                 type = line.split("\t")[1]
 
