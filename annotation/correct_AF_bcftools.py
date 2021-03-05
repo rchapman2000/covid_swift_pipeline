@@ -50,10 +50,17 @@ if __name__ == '__main__':
 	sample_name = args.name
 
 	for line in open("variants.txt"):
-            ad=line.split("DP4=")[1].split(";")[0]
-            allele_ref = int(ad.split(",")[0]) + int(ad.split(",")[1])
-            allele_alt = int(ad.split(",")[2]) + int(ad.split(",")[3])
-            if (allele_ref + allele_alt) > 0:
+            dp4=line.split("DP4=")[1].split(";")[0]
+            ad = line.split("AD=")[1].split(";")[0]
+            #allele_ref = int(ad.split(",")[0]) + int(ad.split(",")[1])
+            #allele_alt = int(ad.split(",")[2]) + int(ad.split(",")[3])
+            allele_ref = int(ad.split(",")[0])
+            if (int(dp4.split(",")[2]) + int(dp4.split(",")[3])) == 0:
+                allele_alt = 0
+            else:
+                allele_alt = int(ad.split(",")[1])
+
+            if (allele_ref + allele_alt) > 0 and allele_alt > 0:
                 if("IMF" in line):
                     af = float(line.split("IMF=")[1].split(";")[0])
                 else:
@@ -138,5 +145,9 @@ if __name__ == '__main__':
                         split_amino_alt = fixed_aa_change[-1]
                         aa_start_pos = fixed_aa_change[1:-1]
                         nuc_change = nuc_ref + line_parts[4] + nuc_alt
+
+                        print(sample_name)
+                        print(fixed_protein)
+                        print(line_parts[4])
                         #                SAMPLE_ID              GENE                  GENPOS                   AAPOS                      AAREF                         AASUB           NUCCHANGE             AAFREQ               DEPTH                                                                   TYPE
                         fixed_file.write(sample_name + "," + str(fixed_protein) + "," + line_parts[4] + "," + str(aa_start_pos) + "," + split_amino_ref + "," + split_amino_alt + "," +  nuc_change + "," + str(af) + "," + str(fixed_depth) + "," + str(allele_ref) + "," + str(allele_alt) + "," + line_parts[1] + "," + nuc_num  + "\n")#+ "," + mat_peptide + "," + mat_peptide_nuc_change + "," + mat_peptide_aa_change + "\n") 

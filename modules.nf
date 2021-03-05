@@ -377,12 +377,11 @@ process GenerateConsensus {
                 !{BAMFILE} | /usr/local/miniconda/bin/bcftools call -A -m -Oz - > tmp.{}.vcf.gz"
         
         # Concatenate parallelized vcfs back together
-        cat *.vcf.gz > \${R1}_catted.vcf.gz
+        gunzip tmp*vcf.gz
+        mv tmp.NC_045512.2\\:1-* \${R1}_catted.vcf
+        for file in tmp*.vcf; do grep -v "#" $file >> \${R1}_catted.vcf; done
 
-        # Index and call variants from vcf
-        /usr/local/miniconda/bin/tabix \${R1}_catted.vcf.gz
-        gunzip \${R1}_catted.vcf.gz
-        cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' > \${R1}_pre_bcftools.vcf
+        cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' | /usr/local/miniconda/bin/bcftools norm -m -any > \${R1}_pre_bcftools.vcf
         
         # Make sure variants are majority variants for consensus calling
         /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre_bcftools.vcf -o \${R1}_pre2.vcf
