@@ -24,7 +24,8 @@ def helpMessage() {
                         ./ can be used for current directory.
                         Fastqs should all be gzipped. This can be done with the command gzip *.fastq. [REQUIRED]
         --OUTDIR        Output directory. [REQUIRED]
-        --PRIMERS       Primer masterfile to run. By default, this pipeline uses the original Swift V1 primers. --PRIMERS V2 can be specified for the Swift V2 primer set.
+        --PRIMERS       Primer masterfile to run. By default, this pipeline uses the Swift V2 primers.
+                        This pipeline can also use QiaSeq primers, specified by --PRIMERS qiaseq.
         --SINGLE_END    Optional flag for single end reads. By default, this pipeline does 
                         paired-end reads.
         --NO_CLIPPING   Skip primerclip option.
@@ -82,14 +83,14 @@ if (!params.OUTDIR.endsWith("/")){
    println("Make sure your output directory ends with trailing slash.")
    exit(1)
 }
-// Use Swift V2 masterfile if --PRIMERS v2 indicated
-if (params.PRIMERS == "V2" | params.PRIMERS == "v2") {
-    MASTERFILE = file("${baseDir}/sarscov2_v2_masterfile.txt")
-    println("Using Swift V2 primerset...")
+// Use specified primer masterfile
+if (params.PRIMERS.toUpperCase() == "QIASEQ") {
+    MASTERFILE = file("${baseDir}/sarscov2_qiaseq_masterfile.txt")
+    println("Using QiaSeq primerset...")
 }
 else {
-    MASTERFILE = file("${baseDir}/sarscov2_masterfile.txt")
-    println("Using Swift V1 primerset [default]...")
+    MASTERFILE = file("${baseDir}/sarscov2_swift_v2_masterfile.txt")
+    println("Using Swift V2 primerset...")
 }
 // Print when using SGRNA_COUNT
 if (params.SGRNA_COUNT == false) {
