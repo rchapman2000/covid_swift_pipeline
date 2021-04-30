@@ -1,7 +1,5 @@
 # TAYLOR (Trimming Amplicons You LOve Rapidly)
-This pipeline takes gzipped fastq files and outputs .bam files aligned to NC_045512.2 as well as consensus fastas. Notably this pipeline incorporates [primerclip](https://github.com/swiftbiosciences/primerclip/tree/deltest). By default input files should be paired-end fastq files to cover the 116-255 bp amplicons produced from the Swift Amplicon SARS-CoV-2 Panel. Expected format is `*.R1.paired.fastq.gz` and `*.R2.paired.fastq.gz`. `--SINGLE_END` can also be specified for single end reads.
-
-This pipeline can also be run without the primerclip option by specifying `--NO_CLIPPING` for consensus generation of non-Swift SARS-CoV-2 samples. 
+This pipeline takes gzipped fastq files and outputs .bam files aligned to NC_045512.2 as well as consensus fastas. Notably this pipeline incorporates [primerclip](https://github.com/swiftbiosciences/primerclip/tree/deltest), and can handle both Swift and QiaSeq primersets. Without specifying any additional options, default input files are paired-end fastq files that cover the 116-255 bp amplicons produced from the Swift Amplicon SARS-CoV-2 Panel. `--SINGLE_END` can also be specified for single end reads. This pipeline can also be run without the primerclip option by specifying `--NO_CLIPPING` for consensus generation of non-Swift or non-QiaSeq SARS-CoV-2 samples. 
 
 ## Installation
 
@@ -17,7 +15,7 @@ This pipeline can also be run without the primerclip option by specifying `--NO_
 | --SINGLE_END | (Optional) Flag to indicate input reads are single end. By default this pipeline expects paired end reads.
 | --NO_CLIPPING | (Optional) Skip primerclip option for shotgun/CovidSeq runs.
 | --SGRNA_COUNT | (Optional) Add extra step to count sgRNAs.
-| --PRIMERS | (Optional) Specify which Swift primerset to use. Default: v1. 
+| --PRIMERS | (Optional) Specify which primerset to use (e.g. `--PRIMERS qiaseq`). Default: Swift v2. 
 | --MIN_LEN | (Optional) Set minimum length for trimming. Default: 75.
 | -with-docker ubuntu:18.04 | __(Required)__ Runs command with Ubuntu docker.
 | -resume  | __(Recommended)__ nextflow will pick up where it left off if the previous command was interrupted for some reason.
