@@ -85,7 +85,7 @@ if (!params.OUTDIR.endsWith("/")){
 }
 // Use specified primer masterfile
 if(params.NO_CLIPPING != false) {
-  if (params.PRIMERS.toUpperCase() == "QIASEQ") {
+  if (params.PRIMERS == "qiaseq") {
       MASTERFILE = file("${baseDir}/sarscov2_qiaseq_masterfile.txt")
       println("Using QiaSeq primerset...")
   }
