@@ -83,14 +83,26 @@ if (!params.OUTDIR.endsWith("/")){
    exit(1)
 }
 // Use specified primer masterfile
-if (params.PRIMERS.toUpperCase() == "QIASEQ") {
-    MASTERFILE = file("${baseDir}/sarscov2_qiaseq_masterfile.txt")
-    println("Using QiaSeq primerset...")
+if(params.NO_CLIPPING == false) {
+    if (params.PRIMERS == false) {
+        println("No primerset specified. Defaulting to Swift V2...")
+    }
+    else {
+        if (params.PRIMERS.toUpperCase() == "QIASEQ") {
+            MASTERFILE = file("${baseDir}/sarscov2_qiaseq_masterfile.txt")
+            println("Using QiaSeq primerset...")
+        }
+        else {
+            MASTERFILE = file("${baseDir}/sarscov2_swift_v2_masterfile.txt")
+            println("Using Swift V2 primerset...")
+        }
+    }
 }
 else {
     MASTERFILE = file("${baseDir}/sarscov2_swift_v2_masterfile.txt")
-    println("Using Swift V2 primerset...")
+    println("--NO_CLIPPING specified. Skipping primer clipping step...")
 }
+
 // Print when using SGRNA_COUNT
 if (params.SGRNA_COUNT == false) {
     println("--SGRNA_COUNT not specified, skipping counting sgRNAs...")
