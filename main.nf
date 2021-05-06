@@ -31,7 +31,6 @@ def helpMessage() {
         --NO_CLIPPING   Skip primerclip option.
         --SGRNA_COUNT   Add extra step to count sgRNAs. 
         --MIN_LEN       Set minimum length for Trimmomatic. Default is 75.
-
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
         
@@ -84,15 +83,13 @@ if (!params.OUTDIR.endsWith("/")){
    exit(1)
 }
 // Use specified primer masterfile
-if(params.NO_CLIPPING != false) {
-  if (params.PRIMERS == "qiaseq") {
-      MASTERFILE = file("${baseDir}/sarscov2_qiaseq_masterfile.txt")
-      println("Using QiaSeq primerset...")
-  }
-  else {
-      MASTERFILE = file("${baseDir}/sarscov2_swift_v2_masterfile.txt")
-      println("Using Swift V2 primerset...")
-  }
+if (params.PRIMERS.toUpperCase() == "QIASEQ") {
+    MASTERFILE = file("${baseDir}/sarscov2_qiaseq_masterfile.txt")
+    println("Using QiaSeq primerset...")
+}
+else {
+    MASTERFILE = file("${baseDir}/sarscov2_swift_v2_masterfile.txt")
+    println("Using Swift V2 primerset...")
 }
 // Print when using SGRNA_COUNT
 if (params.SGRNA_COUNT == false) {
