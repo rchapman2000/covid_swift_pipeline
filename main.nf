@@ -239,7 +239,8 @@ workflow {
             FIX_COVERAGE,
             VCFUTILS,
             REFERENCE_FASTA_FAI,
-            SPLITCHR
+            SPLITCHR,
+            CORRECT_INDEL_DEPTH
         )
     } else {
     // Skip primerclip for non-Swift runs
