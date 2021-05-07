@@ -253,7 +253,8 @@ workflow {
             FIX_COVERAGE,
             VCFUTILS,
             REFERENCE_FASTA_FAI,
-            SPLITCHR
+            SPLITCHR,
+            CORRECT_INDEL_DEPTH
         )
     }
 
