@@ -367,6 +367,7 @@ process GenerateConsensus {
         file REFERENCE_FASTA_FAI
         file SPLITCHR
         file CORRECT_INDEL_DEPTH
+        file CORRECT_OVERLAPPING_VARIANTS
 
     output:
         file("${base}_swift.fasta")
@@ -413,8 +414,11 @@ process GenerateConsensus {
         
         # Make sure variants are majority variants for consensus calling
         python3 !{CORRECT_INDEL_DEPTH} -file \${R1}_pre_bcftools.vcf
-        /usr/local/miniconda/bin/bcftools sort \${R1}_pre1.vcf | /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} -o \${R1}.vcf
+        /usr/local/miniconda/bin/bcftools sort \${R1}_pre1.vcf | /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} -o \${R1}_pre2.vcf
         #/usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
+
+        # Corrects overlapping variants by picking the higher AD
+        python3 !{CORRECT_OVERLAPPING_VARIANTS} -file \${R1}_pre2.vcf
 
         # Index and generate consensus from vcf with majority variants
         /usr/local/miniconda/bin/bgzip \${R1}.vcf

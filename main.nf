@@ -132,6 +132,7 @@ CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
 SGRNAS = file("${baseDir}/sgRNAs_60.fasta")
 FULL_SGRNAS=file("${baseDir}/sgRNAs.fasta")
 CORRECT_INDEL_DEPTH = file("${baseDir}/annotation/correct_indel_depth.py")
+CORRECT_OVERLAPPING_VARIANTS = file("${baseDir}/annotation/fix_overlapping_variants.py")
 
 // Import processes 
 include { Trimming } from './modules.nf'
@@ -240,7 +241,8 @@ workflow {
             VCFUTILS,
             REFERENCE_FASTA_FAI,
             SPLITCHR,
-            CORRECT_INDEL_DEPTH
+            CORRECT_INDEL_DEPTH,
+            CORRECT_OVERLAPPING_VARIANTS
         )
     } else {
     // Skip primerclip for non-Swift runs
@@ -255,7 +257,8 @@ workflow {
             VCFUTILS,
             REFERENCE_FASTA_FAI,
             SPLITCHR,
-            CORRECT_INDEL_DEPTH
+            CORRECT_INDEL_DEPTH,
+            CORRECT_OVERLAPPING_VARIANTS
         )
     }
 
