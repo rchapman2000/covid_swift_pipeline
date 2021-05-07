@@ -366,6 +366,8 @@ process GenerateConsensus {
         file VCFUTILS
         file REFERENCE_FASTA_FAI
         file SPLITCHR
+        file CORRECT_INDEL_DEPTH
+
     output:
         file("${base}_swift.fasta")
         file("${base}_bcftools.vcf")
@@ -410,8 +412,9 @@ process GenerateConsensus {
         cat \${R1}_catted.vcf | awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1 -k2,2n"}' | /usr/local/miniconda/bin/bcftools norm -m -any > \${R1}_pre_bcftools.vcf
         
         # Make sure variants are majority variants for consensus calling
-        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre_bcftools.vcf -o \${R1}_pre2.vcf
-        /usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
+        python3 !{CORRECT_INDEL_DEPTH} -file \${R1}_pre_bcftools.vcf
+        /usr/local/miniconda/bin/bcftools filter -i '(DP4[0]+DP4[1]) < (DP4[2]+DP4[3]) && ((DP4[2]+DP4[3]) > 0)' --threads !{task.cpus} \${R1}_pre1.vcf -o \${R1}.vcf
+        #/usr/local/miniconda/bin/bcftools filter -e 'IMF < 0.5' \${R1}_pre2.vcf -o \${R1}.vcf
 
         # Index and generate consensus from vcf with majority variants
         /usr/local/miniconda/bin/bgzip \${R1}.vcf

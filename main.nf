@@ -131,6 +131,7 @@ CORRECT_AF = file("${baseDir}/annotation/correct_AF.py")
 CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
 SGRNAS = file("${baseDir}/sgRNAs_60.fasta")
 FULL_SGRNAS=file("${baseDir}/sgRNAs.fasta")
+CORRECT_INDEL_DEPTH = file("${baseDir}/annotation_correct_indel_depth.py")
 
 // Import processes 
 include { Trimming } from './modules.nf'
