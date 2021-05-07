@@ -2,6 +2,14 @@ import subprocess
 import argparse
 import sys
 
+def find_values(line):
+	idv = line.split("IDV=")[1].split(";")[0]
+	dp = line.split("DP=")[1].split(";")[0]
+	dp4 = line.split("DP4=")[1].split(";")[0]
+	ad = line.split("AD=")[1].split(";")[0]
+	return idv,dp,dp4,ad
+
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='')
 	parser.add_argument('-file', help="Provide pre_bcftools vcf.")
@@ -20,6 +28,10 @@ if __name__ == '__main__':
 	sample_name = file.split("_pre_b")[0]
 
 	new_vcf = open(sample_name+"_pre1.vcf","w+") 
+
+	list_of_indel_positions=[]
+	list_of_indels = []
+	indel_replaced = []
 
 	for index, line in enumerate(content):
 		# Let's correct some indels
@@ -47,11 +59,7 @@ if __name__ == '__main__':
 
 				max_dp = max(prev_dp, next_dp)
 
-				# Time to replace some depths
-				idv = line.split("IDV=")[1].split(";")[0]
-				dp = line.split("DP=")[1].split(";")[0]
-				dp4 = line.split("DP4=")[1].split(";")[0]
-				ad = line.split("AD=")[1].split(";")[0]
+				idv,dp,dp4,ad = find_values(line)
 				
 				# Trust the AD for the indel depth
 				indel_depth = ad.split(",")[1]
@@ -59,15 +67,32 @@ if __name__ == '__main__':
 				# Compare to depth around the position
 				replacement_ref = max_dp - int(indel_depth)
 
-				if(float(indel_depth) >= replacement_ref):
-					indel_depth_half = int(int(indel_depth) / 2)
-					ref_depth_half = int(replacement_ref / 2)
+				# Check IDV compared to local depth
+				if(float(idv)>=(max_dp/2)):
+					# Check if we have an indel at the same position
+					if(position not in list_of_indel_positions):
+						list_of_indel_positions.append(position)
+						list_of_indels.append(line)
 
-					new_line = line.replace(dp4,str(ref_depth_half)+","+str(ref_depth_half)+","+str(indel_depth_half)+","+str(indel_depth_half))
-					new_line = new_line.replace(ad,str(replacement_ref)+","+str(indel_depth))
+					# Use AD for these these since IDV sucks with indels at same position
+					else:
+						index = list_of_indel_positions.index(position)
+						comparison_indel = list_of_indels[index]
+						comparison_ad = comparison_indel.split("AD=")[1].split(";")[0].split(",")[1]
 
-					new_vcf.write(new_line+"\n")
+						if(int(indel_depth) >= int(comparison_ad)):
+							list_of_indels[index] = line
 			else:
 				new_vcf.write(line+"\n")
 		else:
 			new_vcf.write(line+"\n")
+
+	for indel in list_of_indels:
+		idv,dp,dp4,ad = find_values(indel)
+		indel_depth_half = int(int(indel_depth) / 2)
+		ref_depth_half = int(replacement_ref / 2)
+
+		new_line = indel.replace(dp4,str(ref_depth_half)+","+str(ref_depth_half)+","+str(indel_depth_half)+","+str(indel_depth_half))
+		new_line = indel.replace(ad,str(replacement_ref)+","+str(indel_depth))
+
+		new_vcf.write(new_line+"\n")
