@@ -156,7 +156,7 @@ if(params.SINGLE_END == false) {
 } else {
     // Looks for gzipped files, assumes all separate samples
     input_read_ch = Channel
-        .fromPath("${params.INPUT}*.gz")
+        .fromPath("${params.INPUT}*_R1*.gz")
         //.map { it -> [ file(it)]}
         .map { it -> file(it)}
 }
