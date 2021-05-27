@@ -98,7 +98,7 @@ process Trimming_SE {
     """
     #!/bin/bash
 
-    base=`basename ${R1} ".fastq.gz"`
+    base=`basename ${R1} "_R1.fastq.gz"`
 
     echo \$base
 
