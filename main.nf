@@ -33,6 +33,7 @@ def helpMessage() {
         --MIN_LEN       Set minimum length for Trimmomatic. Default is 75.
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
+        -profile        Specify which profile to run. For AWS, run with -profile cloud_big. For large memory-intensive runs on AWS, run with -profile cloud_bigger.
         
     """.stripIndent()
 }
