@@ -20,7 +20,9 @@ This pipeline takes gzipped fastq files and outputs .bam files aligned to NC_045
 | -with-docker ubuntu:18.04 | __(Required)__ Runs command with Ubuntu docker.
 | -resume  | __(Recommended)__ nextflow will pick up where it left off if the previous command was interrupted for some reason.
 | -with-trace | __(Recommended)__ Outputs a trace.txt that shows which processes end up in which work/ directories. 
+| -with-report | __(Recommended)__ Outputs a report.html that gives basic stats and work directories for each process.
 | -latest | __(Recommended)__ Pulls the most recent github version.
+| -profile | __(Recommended)__ Picks which profile in nextflow.config to run (e.g. `-profile cloud_big`). If running on AWS, recommended to run with `profile cloud_big` and for more memory-intensive runs, with `profile cloud_bigger`).
 
 Example paired fastqs are provided in the example/ folder. These can be run with the command:
 - Example command for example fastqs: ```nextflow run greninger-lab/covid_swift_pipeline -latest --INPUT example/ --OUTDIR output/ --PAIRED_END -resume -with-trace with-docker ubuntu:18.04 --PRIMERS v2```

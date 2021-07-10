@@ -33,6 +33,7 @@ def helpMessage() {
         --MIN_LEN       Set minimum length for Trimmomatic. Default is 75.
         -with-docker ubuntu:18.04   [REQUIRED]
         -resume [RECOMMENDED]
+        -profile        Specify which profile to run. For AWS, run with -profile cloud_big. For large memory-intensive runs on AWS, run with -profile cloud_bigger.
         
     """.stripIndent()
 }
@@ -158,7 +159,7 @@ if(params.SINGLE_END == false) {
 } else {
     // Looks for gzipped files, assumes all separate samples
     input_read_ch = Channel
-        .fromPath("${params.INPUT}*.gz")
+        .fromPath("${params.INPUT}*_R1.fastq.gz")
         //.map { it -> [ file(it)]}
         .map { it -> file(it)}
 }
