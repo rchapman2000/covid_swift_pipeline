@@ -99,7 +99,7 @@ process Trimming_SE {
     #!/bin/bash
 
     #base=`basename ${R1} ".fastq.gz"`
-    base=\$(echo ${R1} | awk -F'_S' '{print \$1}')
+    base=\$(echo ${R1} | awk -F'_R1' '{print \$1}')
 
     echo \$base
 
