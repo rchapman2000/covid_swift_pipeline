@@ -25,7 +25,7 @@ def helpMessage() {
                         Fastqs should all be gzipped. This can be done with the command gzip *.fastq. [REQUIRED]
         --OUTDIR        Output directory. [REQUIRED]
         --PRIMERS       Primer masterfile to run. By default, this pipeline uses the Swift V2 primers.
-                        This pipeline can also use QiaSeq primers, specified by --PRIMERS qiaseq.
+                        This pipeline can also use QiaSeq and Artic v3 primers, specified by --PRIMERS qiaseq and --PRIMERS artic respectively.
         --SINGLE_END    Optional flag for single end reads. By default, this pipeline does 
                         paired-end reads.
         --NO_CLIPPING   Skip primerclip option.
@@ -92,6 +92,10 @@ if(params.NO_CLIPPING == false) {
         if (params.PRIMERS.toUpperCase() == "QIASEQ") {
             MASTERFILE = file("${baseDir}/sarscov2_qiaseq_masterfile.txt")
             println("Using QiaSeq primerset...")
+        }
+        else if (params.PRIMERS.toUpperCase() == "ARTIC") {
+            MASTERFILE = file("${baseDir}/sarscov2_artic_masterfile.txt")
+            println("Using Artic v3 primerset...")
         }
         else {
             MASTERFILE = file("${baseDir}/sarscov2_swift_v2_masterfile.txt")
