@@ -523,21 +523,54 @@ process GenerateConsensus {
 
 // Grab variants from vcf and output into standard format
 process AnnotateVariants {
+    // I don't know why bcftools csq throws exit code 1 when it works just fine...
+    errorStrategy 'ignore'
+    maxRetries 3
+
+    container "quay.io/biocontainers/bcftools:1.14--hde04aa1_1"
+
+    input:
+        tuple val(base),val(bamsize),file("${base}_pre_bcftools.vcf") //from Vcf_ch
+        file ENSEMBL_GFF
+        file REFERENCE_FASTA
+        
+    output: 
+        tuple val(base),file("${base}_csq_filt.vcf")
+    
+    publishDir params.OUTDIR, mode: 'copy', pattern:'*_csq_filt.vcf'
+
+
+    shell:
+    '''
+    #!/bin/bash
+    ls -latr
+    
+    if (( !{bamsize} > 92))
+    then
+        /usr/local/bin/bcftools csq -f !{REFERENCE_FASTA} -g !{ENSEMBL_GFF} !{base}_pre_bcftools.vcf -Ov -o !{base}_csq.vcf -s - --phase a
+        grep "|" !{base}_csq.vcf | grep -v "##" > !{base}_csq_filt.vcf
+
+        vcfsize=\$((\$(wc -c ${base}_csq_filt.vcf | awk '{print \$1'})+0))
+        
+    else 
+        echo "Bam is empty, skipping annotation."
+        touch !{base}_csq_filt.vcf
+    fi
+
+    '''
+}
+
+// Grab variants from vcf and output into standard format
+process CreateVariantsFile {
     errorStrategy 'retry'
     maxRetries 3
 
     container "quay.io/vpeddu/lava_image:latest"
 
     input:
-        tuple val(base),val(bamsize),file("${base}_pre_bcftools.vcf") //from Vcf_ch
+        tuple val(base),file("${base}_csq_filt.vcf")
         file MAT_PEPTIDES
-        file MAT_PEPTIDE_ADDITION
-        file RIBOSOMAL_SLIPPAGE
-        file RIBOSOMAL_START
-        file PROTEINS
-        file AT_REFGENE
-        file AT_REFGENE_MRNA
-        file CORRECT_AF_BCFTOOLS
+        file CONVERT_TO_VARIANTS
         
     output: 
         file("${base}_bcftools_variants.csv")
@@ -550,160 +583,79 @@ process AnnotateVariants {
     #!/bin/bash
     ls -latr
     
-    if (( !{bamsize} > 92))
-    then
-        # Fixes ploidy issues.
-        #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-        awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_pre_bcftools.vcf > !{base}_p.vcf
-
-        # Converts VCF to .avinput for Annovar.
-        file="!{base}""_p.vcf"
-        #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-        convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-        annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
-
-        #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
-        cp !{base}.exonic_variant_function variants.txt
-        #grep "SNV" !{base}.txt > a.tmp
-        #grep "stop" !{base}.txt >> a.tmp
-        #mv a.tmp variants.txt
-    
-        awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
-
-        grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
-        grep -v "delins" !{base}.csv > final.csv
-        # Sorts by beginning of mat peptide
-        sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
-        # Adds mature peptide differences from protein start.
-        python3 !{MAT_PEPTIDE_ADDITION}
-        rm mat_peptides.txt
-        python3 !{CORRECT_AF_BCFTOOLS} -name !{base}
-        # Corrects for ribosomal slippage.
-        python3 !{RIBOSOMAL_SLIPPAGE} filtered_variants.csv proteins.csv
-        awk NF final.csv > a.tmp && mv a.tmp final.csv
-        echo "SAMPLE,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,NTPOS,snpid,nsp,NSPPOS,NSPREF,NSPSUB" > !{base}_bcftools_variants.csv
-        #sort -h -k2 -t, visualization.csv >> !{base}_bcftools_variants.csv
-        cat visualization.csv >> !{base}_bcftools_variants.csv
-
-    else 
-        echo "Bam is empty, skipping annotation."
-        touch !{base}_bcftools_variants.csv
-    fi
+    python3 !{CONVERT_TO_VARIANTS} -name !{base} -file !{base}_csq_filt.vcf
 
     '''
 }
 
-    // process annotateVariants_Lofreq {
-    //     errorStrategy 'retry'
-    //     maxRetries 3
+// // Grab variants from vcf and output into standard format
+// process AnnotateVariants {
+//     errorStrategy 'retry'
+//     maxRetries 3
 
-    //     container "quay.io/vpeddu/lava_image:latest"
+//     container "quay.io/vpeddu/lava_image:latest"
 
-    //     input:
-    //         tuple val(base),val(bamsize),file("${base}_lofreq.vcf") from Vcf_ch2
-    //         file MAT_PEPTIDES
-    //         file MAT_PEPTIDE_ADDITION
-    //         file RIBOSOMAL_SLIPPAGE
-    //         file RIBOSOMAL_START
-    //         file PROTEINS
-    //         file AT_REFGENE
-    //         file AT_REFGENE_MRNA
-    //         file CORRECT_AF
-            
-    //     output: 
-    //         file("${base}_lofreq_variants.csv")
+//     input:
+//         tuple val(base),val(bamsize),file("${base}_pre_bcftools.vcf") //from Vcf_ch
+//         file MAT_PEPTIDES
+//         file MAT_PEPTIDE_ADDITION
+//         file RIBOSOMAL_SLIPPAGE
+//         file RIBOSOMAL_START
+//         file PROTEINS
+//         file AT_REFGENE
+//         file AT_REFGENE_MRNA
+//         file CORRECT_AF_BCFTOOLS
         
-    //     publishDir params.OUTDIR, mode: 'copy'
+//     output: 
+//         file("${base}_bcftools_variants.csv")
+//         file("*")
+    
+//     publishDir params.OUTDIR, mode: 'copy', pattern:'*_bcftools_variants.csv'
 
-    //     shell:
-    //     '''
-    //     #!/bin/bash
-    //     ls -latr
-        
-    //     if (( !{bamsize} > 92))
-    //     then
-    //         # Fixes ploidy issues.
-    //         #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
-    //         #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_bcftools.vcf > !{base}_p.vcf
-    //         cp !{base}_lofreq.vcf !{base}_p.vcf
+//     shell:
+//     '''
+//     #!/bin/bash
+//     ls -latr
+    
+//     if (( !{bamsize} > 92))
+//     then
+//         # Fixes ploidy issues.
+//         #awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","0/1",$10)gsub("1/1","1/0",$11)}1\' !{base}_lofreq.vcf > !{base}_p.vcf
+//         awk -F $\'\t\' \'BEGIN {FS=OFS="\t"}{gsub("0/0","0/1",$10)gsub("0/0","1/0",$11)gsub("1/1","1/0",$10)gsub("1/1","1/0",$11)}1\' !{base}_pre_bcftools.vcf > !{base}_p.vcf
 
-    //         # Converts VCF to .avinput for Annovar.
-    //         file="!{base}""_p.vcf"
-    //         #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-    //         convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
-    //         annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
+//         # Converts VCF to .avinput for Annovar.
+//         file="!{base}""_p.vcf"
+//         #convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+//         convert2annovar.pl -withfreq -format vcf4 -includeinfo !{base}_p.vcf > !{base}.avinput 
+//         annotate_variation.pl -v -buildver AT -outfile !{base} !{base}.avinput .
 
-    //         #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
-    //         cp !{base}.exonic_variant_function !{base}.txt
-    //         grep "SNV" !{base}.txt > a.tmp
-    //         grep "stop" !{base}.txt >> a.tmp
-    //         mv a.tmp variants.txt
-        
-    //         awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
+//         #awk -F":" '($26+0)>=1{print}' !{base}.exonic_variant_function > !{base}.txt
+//         cp !{base}.exonic_variant_function variants.txt
+//         #grep "SNV" !{base}.txt > a.tmp
+//         #grep "stop" !{base}.txt >> a.tmp
+//         #mv a.tmp variants.txt
+    
+//         awk -v name=!{base} -F'[\t:,]' '{print name","$6" "substr($9,3)","$12","$44+0","substr($9,3)","$6","substr($8,3)","substr($8,3,1)" to "substr($8,length($8))","$2","$41}' variants.txt > !{base}.csv
 
-    //         grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
-    //         grep -v "delins" !{base}.csv > final.csv
-    //         # Sorts by beginning of mat peptide
-    //         sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
-    //         # Adds mature peptide differences from protein start.
-    //         python3 !{MAT_PEPTIDE_ADDITION}
-    //         rm mat_peptides.txt
-    //         # Corrects for ribosomal slippage.
-    //         python3 !{RIBOSOMAL_SLIPPAGE} final.csv proteins.csv
-    //         awk NF final.csv > a.tmp && mv a.tmp final.csv
-    //         python3 !{CORRECT_AF}
-    //         sort -h -k2 -t, fixed_variants.txt > !{base}_lofreq_variants.csv
-    //     else 
-    //         echo "Bam is empty, skipping annotation."
-    //         touch !{base}_lofreq_variants.csv
-    //     fi
+//         grep -v "transcript" !{base}.csv > a.tmp && mv a.tmp !{base}.csv 
+//         grep -v "delins" !{base}.csv > final.csv
+//         # Sorts by beginning of mat peptide
+//         sort -k2 -t, -n mat_peptides.txt > a.tmp && mv a.tmp mat_peptides.txt
+//         # Adds mature peptide differences from protein start.
+//         python3 !{MAT_PEPTIDE_ADDITION}
+//         rm mat_peptides.txt
+//         python3 !{CORRECT_AF_BCFTOOLS} -name !{base}
+//         # Corrects for ribosomal slippage.
+//         python3 !{RIBOSOMAL_SLIPPAGE} filtered_variants.csv proteins.csv
+//         awk NF final.csv > a.tmp && mv a.tmp final.csv
+//         echo "SAMPLE,gene,AAPOS,AAREF,AASUB,TCOV,VCOV,AAFREQ,NTPOS,snpid,nsp,NSPPOS,NSPREF,NSPSUB" > !{base}_bcftools_variants.csv
+//         #sort -h -k2 -t, visualization.csv >> !{base}_bcftools_variants.csv
+//         cat visualization.csv >> !{base}_bcftools_variants.csv
 
-    //     '''
-    // }
+//     else 
+//         echo "Bam is empty, skipping annotation."
+//         touch !{base}_bcftools_variants.csv
+//     fi
 
-//     process varscan2 { 
-//         container "quay.io/vpeddu/lava_image:latest"
-
-//         // Retry on fail at most three times 
-//         errorStrategy 'retry'
-//         maxRetries 3
-
-//         input:
-//             tuple val (base), file(BAMFILE), file(INDEX_FILE),val(bamsize) from Clipped_bam_ch3
-//             file REFERENCE_FASTA
-//             file REFERENCE_FASTA_FAI
-//             file SPLITCHR
-//         output:
-//             tuple val(base),val(bamsize),file("${base}_varscan.vcf") into Varscan_ch
-
-//         publishDir params.OUTDIR, mode: 'copy'
-
-//         shell:
-//         '''
-//         #!/bin/bash
-//         ls -latr
-//         R1=`basename !{BAMFILE} .clipped.bam`
-//         echo "bamsize: !{bamsize}"
-//         #if [ -s !{BAMFILE} ]
-//         # More reliable way of checking bam size, because of aliases
-//         if (( !{bamsize} > 92 ))
-//         then
-//             # Parallelize pileup based on number of cores
-//             splitnum=$(($((29903/!{task.cpus}))+1))
-//             cat !{SPLITCHR} | \\
-//                 xargs -I {} -n 1 -P !{task.cpus} sh -c \\
-//                     "/usr/local/miniconda/bin/samtools mpileup \\
-//                         -f !{REFERENCE_FASTA} -r {} \\
-//                         -B \\
-//                         --max-depth 50000 \\
-//                         --max-idepth 500000 \\
-//                     !{BAMFILE} | 
-//                     java -jar /usr/local/bin/VarScan mpileup2cns --validation 1 --output-vcf 1 --min-coverage 2 --min-var-freq 0.001 --p-value 0.99 --min-reads2 1 > tmp.{}.vcf"
-            
-//             cat *.vcf > \${R1}_varscan.vcf
-//         else
-//         touch \${R1}_varscan.vcf
-//         fi
-//         '''
-// }
+//     '''
 // }

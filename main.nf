@@ -123,17 +123,21 @@ VCFUTILS=file("${baseDir}/vcfutils.pl")
 SPLITCHR=file("${baseDir}/splitchr.txt")
 ADAPTERS = file("${baseDir}/All_adapters.fa")
 FIX_COVERAGE = file("${baseDir}/fix_coverage.py")
-PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
-AT_REFGENE = file("${baseDir}/annotation/AT_refGene.txt")
-AT_REFGENE_MRNA = file("${baseDir}/annotation/AT_refGeneMrna.fa")
-LAVA_GFF = file("${baseDir}/annotation/lava_ref.gff")
-MAT_PEPTIDES = file("${baseDir}/annotation/mat_peptides.txt")
-MAT_PEPTIDE_ADDITION = file("${baseDir}/annotation/mat_peptide_addition.py")
-RIBOSOMAL_START = file("${baseDir}/annotation/ribosomal_start.txt")
-RIBOSOMAL_SLIPPAGE = file("${baseDir}/annotation/ribosomal_slippage.py")
-PROTEINS = file("${baseDir}/annotation/proteins.csv")
-CORRECT_AF = file("${baseDir}/annotation/correct_AF.py")
-CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
+// PROTEINS = file("${baseDir}/NC_045512_proteins.txt")
+// AT_REFGENE = file("${baseDir}/annotation/AT_refGene.txt")
+// AT_REFGENE_MRNA = file("${baseDir}/annotation/AT_refGeneMrna.fa")
+// LAVA_GFF = file("${baseDir}/annotation/lava_ref.gff")
+// MAT_PEPTIDES = file("${baseDir}/annotation/mat_peptides.txt")
+// MAT_PEPTIDE_ADDITION = file("${baseDir}/annotation/mat_peptide_addition.py")
+// RIBOSOMAL_START = file("${baseDir}/annotation/ribosomal_start.txt")
+// RIBOSOMAL_SLIPPAGE = file("${baseDir}/annotation/ribosomal_slippage.py")
+// PROTEINS = file("${baseDir}/annotation/proteins.csv")
+// CORRECT_AF = file("${baseDir}/annotation/correct_AF.py")
+// CORRECT_AF_BCFTOOLS = file("${baseDir}/annotation/correct_AF_bcftools.py")
+MAT_PEPTIDES = file("${baseDir}/annotation/mat_peptides_additions.txt")
+ENSEMBL_GFF = file("${baseDir}/annotation/Sars_cov_2.ASM985889v3.101.gff3")
+CONVERT_TO_VARIANTS = file("${baseDir}/annotation/convert_to_annotated_variants.py")
+
 SGRNAS = file("${baseDir}/sgRNAs_60.fasta")
 FULL_SGRNAS=file("${baseDir}/sgRNAs.fasta")
 
@@ -150,6 +154,7 @@ include { Clipping } from './modules.nf'
 include { BamSorting } from './modules.nf'
 include { GenerateConsensus } from './modules.nf'
 include { AnnotateVariants } from './modules.nf'
+include { CreateVariantsFile } from './modules.nf'
 
 // Import reads depending on single end vs. paired end
 if(params.SINGLE_END == false) {
@@ -263,13 +268,13 @@ workflow {
 
     AnnotateVariants (
         GenerateConsensus.out[4],
+        ENSEMBL_GFF,
+        REFERENCE_FASTA
+    )
+
+    CreateVariantsFile (
+        AnnotateVariants.out[0],
         MAT_PEPTIDES,
-        MAT_PEPTIDE_ADDITION,
-        RIBOSOMAL_SLIPPAGE,
-        RIBOSOMAL_START,
-        PROTEINS,
-        AT_REFGENE,
-        AT_REFGENE_MRNA,
-        CORRECT_AF_BCFTOOLS
+        CONVERT_TO_VARIANTS
     )
 }
