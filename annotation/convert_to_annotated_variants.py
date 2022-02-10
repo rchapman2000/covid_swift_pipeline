@@ -70,7 +70,7 @@ if __name__ == '__main__':
 				aaref = ''.join([i for i in aa_change.split(">")[0] if not i.isdigit()])
 
 			# Getting rid of the long sgRNAs...
-			if len(aaref) <= 20:
+			if len(aaref) <= 20 and af >=0.01:
 				# Figure out aa substitution
 
 				# Synonymous mutations will either be marked, or in the case of complex, will just have aachange of 60S, vs 60S>60T 

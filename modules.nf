@@ -547,10 +547,10 @@ process AnnotateVariants {
     
     if (( !{bamsize} > 92))
     then
-        /usr/local/bin/bcftools csq -f !{REFERENCE_FASTA} -g !{ENSEMBL_GFF} !{base}_pre_bcftools.vcf -Ov -o !{base}_csq.vcf -s - --phase a
+        /usr/local/bin/bcftools csq -f !{REFERENCE_FASTA} -g !{ENSEMBL_GFF} !{base}_pre_bcftools.vcf -Ov -o !{base}_csq.vcf -s - --trim-protein-seq 1 --phase a 
         grep "|" !{base}_csq.vcf | grep -v "##" > !{base}_csq_filt.vcf
 
-        vcfsize=\$((\$(wc -c ${base}_csq_filt.vcf | awk '{print \$1'})+0))
+        vcfsize=\$((\$(wc -c !{base}_csq_filt.vcf | awk '{print \$1'})+0))
         
     else 
         echo "Bam is empty, skipping annotation."
