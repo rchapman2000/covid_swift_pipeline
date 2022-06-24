@@ -1,11 +1,5 @@
 # TAYLOR (Trimming Amplicons You LOve Rapidly)
-This pipeline takes gzipped fastq files and outputs .bam files aligned to NC_045512.2 as well as consensus fastas. Notably this pipeline incorporates [primerclip](https://github.com/swiftbiosciences/primerclip/tree/deltest), and can handle both Swift and QiaSeq primersets. Without specifying any additional options, default input files are paired-end fastq files that cover the 116-255 bp amplicons produced from the Swift Amplicon SARS-CoV-2 Panel. `--SINGLE_END` can also be specified for single end reads. This pipeline can also be run without the primerclip option by specifying `--NO_CLIPPING` for consensus generation of non-Swift or non-QiaSeq SARS-CoV-2 samples. 
-
-## Installation
-
-1. Install [nextflow](https://www.nextflow.io/docs/latest/getstarted.html#installation).
-   - Make sure you move nextflow to a directory in your PATH variable.
-2. Install [docker](https://docs.docker.com/get-docker/).
+This short post-processing pipeline takes a folder with .bam files previously run with the main TAYLOR pipeline and generates consensuses following CDC guidelines (IUPAC calling at 25% minor allele frequency, 50X coverage). 
 
 ## Usage
 | Command  | Description |
