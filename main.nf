@@ -122,24 +122,6 @@ else {
     println("--NO_CLIPPING specified. Skipping primer clipping step...")
 }
 
-if (params.PRIMERS != false) {
-    // By default, don't skip indels, but artic v4.1 requires it
-    if (params.PRIMERS.toUpperCase() == "ARTIC_V4.1") {
-        params.BBMAP_INDEL_SKIP = "maxindel=300 strictmaxindel=t"
-        println("Artic V4.1 primerset requires limiting of indel length. Setting bbmap max indel length to 300...")
-    }
-    else if (params.PRIMERS.toUpperCase() == "ARTIC_V4") {
-        params.BBMAP_INDEL_SKIP = "maxindel=300 strictmaxindel=t"
-        println("Artic V4.0 primerset requires limiting of indel length. Setting bbmap max indel length to 300...")
-    }
-    else {
-        params.BBMAP_INDEL_SKIP = ""
-    }
-}
-else {
-    params.BBMAP_INDEL_SKIP = ""
-}
-
 // Print when using SGRNA_COUNT
 if (params.SGRNA_COUNT == false) {
     println("--SGRNA_COUNT not specified, skipping counting sgRNAs...")
@@ -222,8 +204,7 @@ workflow {
         )
         Aligning (
             Trimming.out[0],
-            REFERENCE_FASTA,
-            params.BBMAP_INDEL_SKIP
+            REFERENCE_FASTA
         )
         // Optional step for counting sgRNAs 
         if (params.SGRNA_COUNT != false) {
@@ -248,8 +229,7 @@ workflow {
         )
         Aligning (
             Trimming_SE.out[0],
-            REFERENCE_FASTA,
-            params.BBMAP_INDEL_SKIP
+            REFERENCE_FASTA
         )
         // Optional step for counting sgRNAs 
         if (params.SGRNA_COUNT != false) {

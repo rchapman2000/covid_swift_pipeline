@@ -141,8 +141,8 @@ process Fastqc_SE {
 
 // Align fastq files to Wuhan refseq using bbmap
 process Aligning {
-    container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
-    //container "quay.io/biocontainers/bwa:0.7.17--hed695b0_7	"
+    // container "quay.io/biocontainers/bbmap:38.86--h1296035_0"
+    container "quay.io/biocontainers/bwa:0.7.17--hed695b0_7"
 
     // Retry on fail at most three times 
     errorStrategy 'retry'
@@ -151,7 +151,6 @@ process Aligning {
     input: 
         tuple val(base), file("${base}.trimmed.fastq.gz"),file("${base}_summary.csv")
         file REFERENCE_FASTA
-        val BBMAP_INDEL_SKIP
     output:
         tuple val(base), file("${base}.bam"),file("${base}_summary2.csv") //into Aligned_bam_ch
         tuple val (base), file("*") //into Dump_ch
@@ -161,8 +160,9 @@ process Aligning {
     #!/bin/bash
 
     cat ${base}*.fastq.gz > ${base}_cat.fastq.gz
-    /usr/local/bin/bbmap.sh in=${base}_cat.fastq.gz outm=${base}.bam ref=${REFERENCE_FASTA} local=true ${BBMAP_INDEL_SKIP} -Xmx6g > bbmap_out.txt 2>&1
-    reads_mapped=\$(cat bbmap_out.txt | grep "mapped:" | cut -d\$'\\t' -f3)
+    /usr/local/bin/bwa index ${REFERENCE_FASTA}
+    /usr/local/bin/bwa mem -t ${task.cpus} NC_045512.2.fasta ${base}_cat.fastq.gz > ${base}.bam
+    reads_mapped=NA
 
     cp ${base}_summary.csv ${base}_summary2.csv
     printf ",\$reads_mapped" >> ${base}_summary2.csv
